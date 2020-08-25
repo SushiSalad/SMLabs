@@ -1,0 +1,16 @@
+/NOLOGO
+/errorReport:prompt
+/MACHINE:x64
+/SUBSYSTEM:WINDOWS
+/DEF
+/NAME:"UE4Editor-testing-0016.dll"
+/IGNORE:4221
+/NODEFAULTLIB
+"C:\Users\offic\Documents\Unreal Projects\testing\Intermediate\Build\Win64\testingEditor\Development\Engine\SharedPCH.Engine.ShadowErrors.h.obj"
+"C:\Users\offic\Documents\Unreal Projects\testing\Intermediate\Build\Win64\UE4Editor\Development\testing\SMCharacter.cpp.obj"
+"C:\Users\offic\Documents\Unreal Projects\testing\Intermediate\Build\Win64\UE4Editor\Development\testing\testing.cpp.obj"
+"C:\Users\offic\Documents\Unreal Projects\testing\Intermediate\Build\Win64\UE4Editor\Development\testing\SMCharacter.gen.cpp.obj"
+"C:\Users\offic\Documents\Unreal Projects\testing\Intermediate\Build\Win64\UE4Editor\Development\testing\testing.init.gen.cpp.obj"
+"C:\Users\offic\Documents\Unreal Projects\testing\Intermediate\Build\Win64\UE4Editor\Development\testing\Default.rc2.res"
+/OUT:"C:\Users\offic\Documents\Unreal Projects\testing\Intermediate\Build\Win64\UE4Editor\Development\testing\UE4Editor-testing-0016.lib"
+/INCLUDE:IMPLEMENT_MODULE_testing

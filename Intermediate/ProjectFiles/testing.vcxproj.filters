@@ -1,0 +1,53 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <None Include="..\..\testing.uproject" />
+    <Filter Include="Source">
+      <UniqueIdentifier>{113E11F6-D026-4B31-BDC5-949E70D37F7B}</UniqueIdentifier>
+    </Filter>
+    <None Include="..\..\Source\testing.Target.cs">
+      <Filter>Source</Filter>
+    </None>
+    <None Include="..\..\Source\testingEditor.Target.cs">
+      <Filter>Source</Filter>
+    </None>
+    <None Include="..\..\.gitignore" />
+    <None Include="..\..\README.md" />
+    <Filter Include="Config">
+      <UniqueIdentifier>{312081E1-3A15-4BBD-BA2F-FA42DD5DBD7C}</UniqueIdentifier>
+    </Filter>
+    <None Include="..\..\Config\DefaultEditor.ini">
+      <Filter>Config</Filter>
+    </None>
+    <None Include="..\..\Config\DefaultEditorPerProjectUserSettings.ini">
+      <Filter>Config</Filter>
+    </None>
+    <None Include="..\..\Config\DefaultEngine.ini">
+      <Filter>Config</Filter>
+    </None>
+    <None Include="..\..\Config\DefaultGame.ini">
+      <Filter>Config</Filter>
+    </None>
+    <None Include="..\..\Config\DefaultInput.ini">
+      <Filter>Config</Filter>
+    </None>
+    <Filter Include="Source\testing">
+      <UniqueIdentifier>{F042DEE7-80E5-48EC-A33C-4EB7E19E14D9}</UniqueIdentifier>
+    </Filter>
+    <ClCompile Include="..\..\Source\testing\SMCharacter.cpp">
+      <Filter>Source\testing</Filter>
+    </ClCompile>
+    <ClInclude Include="..\..\Source\testing\SMCharacter.h">
+      <Filter>Source\testing</Filter>
+    </ClInclude>
+    <None Include="..\..\Source\testing\testing.Build.cs">
+      <Filter>Source\testing</Filter>
+    </None>
+    <ClCompile Include="..\..\Source\testing\testing.cpp">
+      <Filter>Source\testing</Filter>
+    </ClCompile>
+    <ClInclude Include="..\..\Source\testing\testing.h">
+      <Filter>Source\testing</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

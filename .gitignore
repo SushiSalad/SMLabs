@@ -1,6 +1,4 @@
-Binaries
 DerivedDataCache
-Intermediate
 Saved
 .vscode
 .vs
@@ -8,7 +6,6 @@ Saved
 *.opensdf
 *.opendb
 *.sdf
-*.sln
 *.suo
 *.xcodeproj
 *.xcworkspace

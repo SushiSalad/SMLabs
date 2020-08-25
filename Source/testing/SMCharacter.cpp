@@ -9,8 +9,14 @@
 #include "GameFramework/CharacterMovementComponent.h"
 
 // Sets default values
+
+
+
 ASMCharacter::ASMCharacter()
 {
+
+	
+
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 	// Create a first person camera component.
@@ -25,9 +31,9 @@ ASMCharacter::ASMCharacter()
 	SMCapsuleComponent = GetCapsuleComponent();
 	SMCharacterMovementComponent = GetCharacterMovement();
 
-	AirAcceleration = 10000;
+	AirAcceleration = 20000;
 	GroundAcceleration = 10000;
-	AirSpeedIncreaseLimit = 30;
+	AirSpeedIncreaseLimit = 50;
 	TicksOnGround = 0;
 	spaceHold = false;
 }
@@ -43,7 +49,21 @@ void ASMCharacter::BeginPlay()
 void ASMCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-
+	if (spaceHold) {
+		SMCharacterMovementComponent->GroundFriction = 0;
+		SMCharacterMovementComponent->BrakingDecelerationWalking = 0;
+		SMCharacterMovementComponent->BrakingDecelerationFlying = 0;
+		GroundAcceleration = 10000;
+	}
+	else {
+		SMCharacterMovementComponent->GroundFriction = 8;
+		GroundAcceleration = 10000;
+	}
+	GetMovementComponent()->Velocity += GetNextFrameVelocity(CreateAccelerationVector(), DeltaTime);
+	GEngine->AddOnScreenDebugMessage(-1, DeltaTime, FColor::Blue, FString::Printf(TEXT("%.2f u/s"),
+		sqrt(GetMovementComponent()->Velocity.X * GetMovementComponent()->Velocity.X +
+			GetMovementComponent()->Velocity.Y * GetMovementComponent()->Velocity.Y)));
+	
 }
 
 // Called to bind functionality to input
