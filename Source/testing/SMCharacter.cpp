@@ -2,40 +2,36 @@
 
 
 #include "SMCharacter.h"
+#include "MathUtil.h"
 #include "Components/SceneComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/PawnMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
-
-// Sets default values
-
-
+#include "DrawDebugHelpers.h"
 
 ASMCharacter::ASMCharacter()
 {
-
-	
-
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
-	// Create a first person camera component.
+
+	//First Person Camera
 	FPSCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
-	// Attach the camera component to our capsule component.
 	FPSCameraComponent->SetupAttachment((USceneComponent*)GetCapsuleComponent());
-	// Position the camera slightly above the eyes.
-	FPSCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 50.0f + BaseEyeHeight));
-	// Allow the pawn to control camera rotation.
+	//FPSCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 50.0f + BaseEyeHeight));
 	FPSCameraComponent->bUsePawnControlRotation = true;
 
+	//Other Components
 	SMCapsuleComponent = GetCapsuleComponent();
 	SMCharacterMovementComponent = GetCharacterMovement();
 
+	//Default values
 	AirAcceleration = 20000;
 	GroundAcceleration = 10000;
 	AirSpeedIncreaseLimit = 50;
 	TicksOnGround = 0;
 	spaceHold = false;
+	ropeFired = false;
 }
 
 // Called when the game starts or when spawned
@@ -49,21 +45,9 @@ void ASMCharacter::BeginPlay()
 void ASMCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
-	if (spaceHold) {
-		SMCharacterMovementComponent->GroundFriction = 0;
-		SMCharacterMovementComponent->BrakingDecelerationWalking = 0;
-		SMCharacterMovementComponent->BrakingDecelerationFlying = 0;
-		GroundAcceleration = 10000;
-	}
-	else {
-		SMCharacterMovementComponent->GroundFriction = 8;
-		GroundAcceleration = 10000;
-	}
-	GetMovementComponent()->Velocity += GetNextFrameVelocity(CreateAccelerationVector(), DeltaTime);
-	GEngine->AddOnScreenDebugMessage(-1, DeltaTime, FColor::Blue, FString::Printf(TEXT("%.2f u/s"),
-		sqrt(GetMovementComponent()->Velocity.X * GetMovementComponent()->Velocity.X +
-			GetMovementComponent()->Velocity.Y * GetMovementComponent()->Velocity.Y)));
-	
+
+	MovementStuff(DeltaTime);
+	RopeStuff(DeltaTime);
 }
 
 // Called to bind functionality to input
@@ -80,11 +64,31 @@ void ASMCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	//Setup jump bindings
 	PlayerInputComponent->BindAction(FName("Jump"), IE_Pressed, this, &ASMCharacter::StartJump);
 	PlayerInputComponent->BindAction(FName("Jump"), IE_Released, this, &ASMCharacter::StopJump);
+	//Setup swinging bindings
+	PlayerInputComponent->BindAction(FName("FireRope"), IE_Pressed, this, &ASMCharacter::FireRope);
+	PlayerInputComponent->BindAction(FName("PullRope"), IE_Pressed, this, &ASMCharacter::PullRope);
+	PlayerInputComponent->BindAction(FName("FireRope"), IE_Released, this, &ASMCharacter::DetachRope);
+}
+
+//// MOVEMENT ////
+
+void ASMCharacter::MovementStuff(float DeltaTime) {
+	if (spaceHold) {
+		SMCharacterMovementComponent->GroundFriction = 0;
+		SMCharacterMovementComponent->BrakingDecelerationWalking = 0;
+		SMCharacterMovementComponent->BrakingDecelerationFlying = 0;
+		GroundAcceleration = 10000;
+	} else {
+		SMCharacterMovementComponent->GroundFriction = 8;
+		GroundAcceleration = 10000;
+	}
+	GetMovementComponent()->Velocity += GetNextFrameVelocity(CreateAccelerationVector(), DeltaTime);
+	DebugUtil::Message(FString::Printf(TEXT("%.2f u/s"), 
+		MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y)), DeltaTime);
 }
 
 void ASMCharacter::NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
-	bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse,
-	const FHitResult & Hit) {
+	bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult & Hit) {
 	if (spaceHold) {
 		Jump();
 	} else {
@@ -128,4 +132,48 @@ FVector ASMCharacter::GetNextFrameVelocity(FVector AccelVector, float DeltaTime)
 	} else {
 		return AccelVector * DeltaTime;
 	}
+}
+
+//// SWINGING ////
+
+void ASMCharacter::RopeStuff(float DeltaTime) {
+	
+}
+
+void ASMCharacter::FireRope() {
+	if (!ropeFired) {
+		ropeFired = true;
+		FCollisionQueryParams collisionParams;
+		collisionParams.bTraceComplex = true;
+		collisionParams.AddIgnoredActor(this);
+		
+		FVector cameraLoc;
+		FRotator cameraRot;
+		GetActorEyesViewPoint(cameraLoc, cameraRot);
+		FVector end = cameraLoc + (cameraRot.Vector() * 5000.f);
+
+		DrawDebugLine(GetWorld(), cameraLoc, end, FColor::Green, false, 1, 0, 1);
+		if (GetWorld()->LineTraceSingleByChannel(ropeTarget, cameraLoc, end, ECC_WorldStatic, collisionParams)) {
+			DrawDebugLine(GetWorld(), cameraLoc, ropeTarget.ImpactPoint, FColor::Red, false, 1, 0, 5);
+			DebugUtil::Message(FString::Printf(TEXT("Collision on %s at %s" ), *ropeTarget.GetActor()->GetActorLabel(), 
+				*ropeTarget.ImpactPoint.ToString()), 10);
+			ropeAttached = true;
+		}
+	}
+}
+
+void ASMCharacter::PullRope() {
+	if (ropeFired) {
+		if (ropeAttached) {
+			
+		} else {
+
+		}
+	}
+}
+
+void ASMCharacter::DetachRope() {
+	ropeFired = false;
+	ropeAttached = false;
+	ropeTarget.Reset();
 }

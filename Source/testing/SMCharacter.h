@@ -29,43 +29,41 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	class UCharacterMovementComponent* SMCharacterMovementComponent;
 
-	UPROPERTY(EditAnywhere)
-	float AirAcceleration;
-
-	UPROPERTY(EditAnywhere)
-	float GroundAcceleration;
-
-	UPROPERTY(EditAnywhere)
-	float AirSpeedIncreaseLimit;
-
-	int TicksOnGround;
-	bool spaceHold;
-
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 
-	virtual void NotifyHit
-	(
-		class UPrimitiveComponent * MyComp,
-		AActor * Other,
-		class UPrimitiveComponent * OtherComp,
-		bool bSelfMoved,
-		FVector HitLocation,
-		FVector HitNormal,
-		FVector NormalImpulse,
-		const FHitResult & Hit
-	) override;
+	//On hit, if space held, jump
+	virtual void NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
+		bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult & Hit) override;
 
-	// Sets jump flag when key is pressed.
+	//Jumping
 	void StartJump();
-
-	// Clears jump flag when key is released.
 	void StopJump();
 
-	FVector CreateAccelerationVector();
+	//Source Movement
+	UPROPERTY(EditAnywhere)
+	float AirAcceleration;
+	UPROPERTY(EditAnywhere)
+	float GroundAcceleration;
+	UPROPERTY(EditAnywhere)
+	float AirSpeedIncreaseLimit;
+	int TicksOnGround;
+	bool spaceHold;
 
+	void MovementStuff(float DeltaTime);
+	FVector CreateAccelerationVector();
 	FVector GetNextFrameVelocity(FVector AccelVector, float DeltaTime);
+
+	//Swinging
+	bool ropeFired;
+	bool ropeAttached;
+	FHitResult ropeTarget;
+
+	void RopeStuff(float DeltaTime);
+	void FireRope();
+	void PullRope();
+	void DetachRope();
 };
