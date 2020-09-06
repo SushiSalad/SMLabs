@@ -7,6 +7,15 @@ struct MathUtil {
 		return sqrt(a*a + b*b);
 	}
 
+	//1 Hammer Unit is 1.905 Unreal Units.
+	static float ToHammerUnits(float a) {
+		return a / 1.905;
+	}
+
+	static float ToUnrealUnits(float a) {
+		return a * 1.905;
+	}
+
 };
 
 struct DebugUtil {

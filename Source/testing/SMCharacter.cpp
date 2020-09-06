@@ -20,6 +20,7 @@ ASMCharacter::ASMCharacter()
 	FPSCameraComponent->SetupAttachment((USceneComponent*)GetCapsuleComponent());
 	//FPSCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 50.0f + BaseEyeHeight));
 	FPSCameraComponent->bUsePawnControlRotation = true;
+	FPSCameraComponent->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, FName(TEXT("headSocket")));
 
 	//Other Components
 	SMCapsuleComponent = GetCapsuleComponent();
@@ -28,7 +29,7 @@ ASMCharacter::ASMCharacter()
 	//Default values
 	AirAcceleration = 20000;
 	GroundAcceleration = 10000;
-	AirSpeedIncreaseLimit = 50;
+	AirSpeedIncreaseLimit = MathUtil::ToUnrealUnits(30);
 	TicksOnGround = 0;
 	spaceHold = false;
 	ropeFired = false;
@@ -80,11 +81,12 @@ void ASMCharacter::MovementStuff(float DeltaTime) {
 		GroundAcceleration = 10000;
 	} else {
 		SMCharacterMovementComponent->GroundFriction = 8;
+		SMCharacterMovementComponent->BrakingDecelerationWalking = 2048.0;
 		GroundAcceleration = 10000;
 	}
 	GetMovementComponent()->Velocity += GetNextFrameVelocity(CreateAccelerationVector(), DeltaTime);
 	DebugUtil::Message(FString::Printf(TEXT("%.2f u/s"), 
-		MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y)), DeltaTime);
+		MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
 }
 
 void ASMCharacter::NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
