@@ -20,7 +20,10 @@ ASMCharacter::ASMCharacter()
 	FPSCameraComponent->SetupAttachment((USceneComponent*)GetCapsuleComponent());
 	//FPSCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 50.0f + BaseEyeHeight));
 	FPSCameraComponent->bUsePawnControlRotation = true;
+
+	//FAttachmentTransformRules rules(EAttachmentRule::KeepRelative, false);
 	FPSCameraComponent->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, FName(TEXT("headSocket")));
+	FPSCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 500.0f + BaseEyeHeight));
 
 	//Other Components
 	SMCapsuleComponent = GetCapsuleComponent();
