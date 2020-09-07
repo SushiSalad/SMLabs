@@ -17,13 +17,15 @@ ASMCharacter::ASMCharacter()
 
 	//First Person Camera
 	FPSCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
-	FPSCameraComponent->SetupAttachment((USceneComponent*)GetCapsuleComponent());
+	//FPSCameraComponent->AttachTo(GetMesh(), "headSocket");
+	FPSCameraComponent->SetupAttachment(GetMesh(), "headSocket");
+	//FPSCameraComponent->SetupAttachment((USceneComponent*)GetCapsuleComponent());
 	//FPSCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 50.0f + BaseEyeHeight));
 	FPSCameraComponent->bUsePawnControlRotation = true;
 
 	//FAttachmentTransformRules rules(EAttachmentRule::KeepRelative, false);
-	FPSCameraComponent->AttachToComponent(GetMesh(), FAttachmentTransformRules::KeepRelativeTransform, FName(TEXT("headSocket")));
-	FPSCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 500.0f + BaseEyeHeight));
+	
+	//ssaFPSCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 500.0f + BaseEyeHeight));
 
 	//Other Components
 	SMCapsuleComponent = GetCapsuleComponent();
@@ -42,6 +44,8 @@ ASMCharacter::ASMCharacter()
 void ASMCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	FPSCameraComponent->AttachTo(GetMesh(), "headSocket", EAttachLocation::SnapToTarget);
 	
 }
 
