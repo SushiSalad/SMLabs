@@ -9,6 +9,8 @@
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "DrawDebugHelpers.h"
+//#include "SMRope.h"
+#include "CableComponent.h"
 
 ASMCharacter::ASMCharacter()
 {
@@ -25,10 +27,22 @@ ASMCharacter::ASMCharacter()
 	SMCapsuleComponent = GetCapsuleComponent();
 	SMCharacterMovementComponent = GetCharacterMovement();
 
+	//Rope
+	rope = CreateDefaultSubobject<UCableComponent>(TEXT("Rope"));
+	//rope->AttachToComponent(this->GetRootComponent(), FAttachmentTransformRules::KeepWorldTransform);
+	//rope->SetAttachEndTo(this, RootComponent->GetDefaultSceneRootVariableName());
+	rope->SetVisibility(false);
+	rope->CableLength = 0;
+	rope->CableWidth = 6;
+	rope->EndLocation = FVector(0, 0, 0);
+
 	//Default values
 	AirAcceleration = 20000;
 	GroundAcceleration = 10000;
-	AirSpeedIncreaseLimit = 50;
+	MaxAirSpeedIncrease = 50;
+	MaxRopeDistance = 5000;
+	RopePullSpeed = 1;
+	WidowGrapple = true;
 	TicksOnGround = 0;
 	spaceHold = false;
 	ropeFired = false;
@@ -122,10 +136,10 @@ FVector ASMCharacter::GetNextFrameVelocity(FVector AccelVector, float DeltaTime)
 	float magVprojA = GetMovementComponent()->Velocity.CosineAngle2D(AccelVector)*GetMovementComponent()->Velocity.Size();
 	float magAxT = (AccelVector * DeltaTime).Size();
 	if (GetMovementComponent()->IsFalling() || bPressedJump) {
-		if (magVprojA < (AirSpeedIncreaseLimit - magAxT)) {
+		if (magVprojA < (MaxAirSpeedIncrease - magAxT)) {
 			return AccelVector * DeltaTime;
-		} else if (magVprojA < AirSpeedIncreaseLimit) {
-			return (AirSpeedIncreaseLimit - magVprojA) * (AccelVector / AccelVector.Size());
+		} else if (magVprojA < MaxAirSpeedIncrease) {
+			return (MaxAirSpeedIncrease - magVprojA) * (AccelVector / AccelVector.Size());
 		} else {
 			return FVector(0, 0, 0);
 		}
@@ -137,7 +151,14 @@ FVector ASMCharacter::GetNextFrameVelocity(FVector AccelVector, float DeltaTime)
 //// SWINGING ////
 
 void ASMCharacter::RopeStuff(float DeltaTime) {
-	
+	if (WidowGrapple) {
+		if (ropeAttached) {
+			DrawDebugLine(GetWorld(), GetActorLocation(), ropeTarget.ImpactPoint, FColor::Red, false, -1.0F, 0, 2);
+			this->LaunchCharacter((ropeTarget.ImpactPoint - GetActorLocation()) * RopePullSpeed * DeltaTime, false, false);
+		}
+	} else {
+		
+	}
 }
 
 void ASMCharacter::FireRope() {
@@ -150,14 +171,15 @@ void ASMCharacter::FireRope() {
 		FVector cameraLoc;
 		FRotator cameraRot;
 		GetActorEyesViewPoint(cameraLoc, cameraRot);
-		FVector end = cameraLoc + (cameraRot.Vector() * 5000.f);
+		FVector end = cameraLoc + (cameraRot.Vector() * MaxRopeDistance);
 
-		DrawDebugLine(GetWorld(), cameraLoc, end, FColor::Green, false, 1, 0, 1);
 		if (GetWorld()->LineTraceSingleByChannel(ropeTarget, cameraLoc, end, ECC_WorldStatic, collisionParams)) {
-			DrawDebugLine(GetWorld(), cameraLoc, ropeTarget.ImpactPoint, FColor::Red, false, 1, 0, 5);
-			DebugUtil::Message(FString::Printf(TEXT("Collision on %s at %s" ), *ropeTarget.GetActor()->GetActorLabel(), 
-				*ropeTarget.ImpactPoint.ToString()), 10);
+			//DebugUtil::Message(FString::Printf(TEXT("Collision on %s at %s" ), *ropeTarget.GetActor()->GetActorLabel(), *ropeTarget.ImpactPoint.ToString()), 10);
 			ropeAttached = true;
+			if (!WidowGrapple) {
+				//rope = ASMRope(cameraLoc, end);
+
+			}
 		}
 	}
 }
@@ -175,5 +197,7 @@ void ASMCharacter::PullRope() {
 void ASMCharacter::DetachRope() {
 	ropeFired = false;
 	ropeAttached = false;
+	rope->SetWorldLocation(FVector(0,0,0));
+	rope->SetVisibility(false);
 	ropeTarget.Reset();
 }
