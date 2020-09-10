@@ -19,10 +19,6 @@ ASMCharacter::ASMCharacter()
 
 	//First Person Camera
 	FPSCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
-	//FPSCameraComponent->AttachTo(GetMesh(), "headSocket");
-	FPSCameraComponent->SetupAttachment(GetMesh(), "headSocket");
-	//FPSCameraComponent->SetupAttachment((USceneComponent*)GetCapsuleComponent());
-	//FPSCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 50.0f + BaseEyeHeight));
 	FPSCameraComponent->bUsePawnControlRotation = true;
 
 	//FAttachmentTransformRules rules(EAttachmentRule::KeepRelative, false);
@@ -46,7 +42,7 @@ ASMCharacter::ASMCharacter()
 	AirAcceleration = 20000;
 	GroundAcceleration = 10000;
 	MaxAirSpeedIncrease = MathUtil::ToUnrealUnits(30);
-	MaxRopeDistance = 5000;
+	MaxRopeDistance = 50000;
 	RopePullSpeed = 1;
 	WidowGrapple = true;
 	TicksOnGround = 0;
