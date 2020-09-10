@@ -29,6 +29,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	class UCharacterMovementComponent* SMCharacterMovementComponent;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = cable)
+	class UCableComponent* rope;
+
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -49,7 +52,7 @@ public:
 	UPROPERTY(EditAnywhere)
 	float GroundAcceleration;
 	UPROPERTY(EditAnywhere)
-	float AirSpeedIncreaseLimit;
+	float MaxAirSpeedIncrease;
 	int TicksOnGround;
 	bool spaceHold;
 
@@ -58,9 +61,16 @@ public:
 	FVector GetNextFrameVelocity(FVector AccelVector, float DeltaTime);
 
 	//Swinging
+	UPROPERTY(EditAnywhere)
+	float MaxRopeDistance;
+	UPROPERTY(EditAnywhere)
+	float RopePullSpeed;
+	UPROPERTY(EditAnywhere)
+	bool WidowGrapple;
 	bool ropeFired;
 	bool ropeAttached;
 	FHitResult ropeTarget;
+	//ASMRope rope;
 
 	void RopeStuff(float DeltaTime);
 	void FireRope();
