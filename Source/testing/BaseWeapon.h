@@ -6,6 +6,10 @@
 #include "GameFramework/Actor.h"
 #include "BaseWeapon.generated.h"
 
+
+//DECLARE_DYNAMIC_MULTICAST_DELEGATE(FIRE);
+
+
 UCLASS()
 class TESTING_API ABaseWeapon : public AActor
 {
@@ -23,4 +27,37 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite);
+	
+	UFUNCTION(BlueprintCallable) void Fire();
+
+	//UPROPERTY(EditAnywhere, BlueprintReadWrite);
+	UFUNCTION(BlueprintCallable) void Reload();
+
+	UFUNCTION(BlueprintCallable) void toggleVis();
+
+	UFUNCTION(BlueprintImplementableEvent) void onFire();
+
+	UFUNCTION(BlueprintImplementableEvent) void onReload();
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	int ammo;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	int maxAmmo;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	int bulletSpread;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	int fireRate;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	int damage;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	int reloadSpeed;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	int weight;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	USkeletalMeshComponent* skeleMesh;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	TArray<UAnimMontage*> montage;
+
+	//UPROPERTY(BlueprintAssignable) FIRE onFire;
 };
