@@ -6,10 +6,6 @@
 #include "GameFramework/Actor.h"
 #include "BaseWeapon.generated.h"
 
-
-//DECLARE_DYNAMIC_MULTICAST_DELEGATE(FIRE);
-
-
 UCLASS()
 class TESTING_API ABaseWeapon : public AActor
 {
@@ -58,6 +54,4 @@ public:
 	USkeletalMeshComponent* skeleMesh;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
 	TArray<UAnimMontage*> montage;
-
-	//UPROPERTY(BlueprintAssignable) FIRE onFire;
 };

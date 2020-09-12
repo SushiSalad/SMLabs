@@ -32,6 +32,17 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = cable)
 	class UCableComponent* rope;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	class ABaseWeapon* weapon;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<ABaseWeapon> HandgunClass;
+	class ABaseWeapon* handgun;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<ABaseWeapon> RocketClass;
+	class ABaseWeapon* rocket_launcher;
+
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -41,6 +52,17 @@ public:
 	//On hit, if space held, jump
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
 		bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult & Hit) override;
+
+	void SwitchWeapon();
+
+	void Fire();
+
+	void Reload();
+		
+	void RopeStuff(float DeltaTime);
+	void FireRope();
+	void PullRope();
+	void DetachRope();
 
 	//Jumping
 	void StartJump();
@@ -72,8 +94,5 @@ public:
 	FHitResult ropeTarget;
 	//ASMRope rope;
 
-	void RopeStuff(float DeltaTime);
-	void FireRope();
-	void PullRope();
-	void DetachRope();
+	
 };

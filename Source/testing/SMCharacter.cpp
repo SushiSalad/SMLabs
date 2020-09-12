@@ -11,6 +11,8 @@
 #include "DrawDebugHelpers.h"
 //#include "SMRope.h"
 #include "CableComponent.h"
+#include "BaseWeapon.h"
+#include "Animation/AnimInstance.h"
 
 ASMCharacter::ASMCharacter()
 {
@@ -55,7 +57,19 @@ void ASMCharacter::BeginPlay()
 {
 	Super::BeginPlay();
 
-	FPSCameraComponent->AttachTo(GetMesh(), "headSocket", EAttachLocation::SnapToTarget);
+	//spawn and set weapons
+	FActorSpawnParameters Sparam;
+	handgun = GetWorld()->SpawnActor<ABaseWeapon>(HandgunClass, FTransform(FVector(0,0,0)), Sparam);
+	handgun->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, "hand_rSocket");
+
+	rocket_launcher = GetWorld()->SpawnActor<ABaseWeapon>(RocketClass, FTransform(FVector(0, 0, 0)), Sparam);
+	rocket_launcher->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, "hand_rSocket");
+	rocket_launcher->toggleVis();
+
+	//starting weapon
+	weapon = handgun;
+
+	FPSCameraComponent->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, "headSocket");
 	
 }
 
@@ -86,6 +100,39 @@ void ASMCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction(FName("FireRope"), IE_Pressed, this, &ASMCharacter::FireRope);
 	PlayerInputComponent->BindAction(FName("PullRope"), IE_Pressed, this, &ASMCharacter::PullRope);
 	PlayerInputComponent->BindAction(FName("FireRope"), IE_Released, this, &ASMCharacter::DetachRope);
+	//Setup weapon fuinctionality
+	PlayerInputComponent->BindAction(FName("Fire"), IE_Pressed, this, &ASMCharacter::Fire);
+	PlayerInputComponent->BindAction(FName("Reload"), IE_Pressed, this, &ASMCharacter::Reload);
+	PlayerInputComponent->BindAction(FName("SwitchWeapon"), IE_Pressed, this, &ASMCharacter::SwitchWeapon);
+}
+
+//// WEAPON STUFF ///
+
+void ASMCharacter::Fire() {
+	if (weapon->ammo > 0) {
+		weapon->Fire();
+		this->PlayAnimMontage(weapon->montage[0]);
+	}
+}
+
+void ASMCharacter::Reload() {
+	if (weapon->ammo < weapon->maxAmmo) {
+		weapon->Reload();
+		this->PlayAnimMontage(weapon->montage[1]);
+	}
+}
+
+void ASMCharacter::SwitchWeapon() {
+	if (weapon == handgun) {
+		rocket_launcher->toggleVis();
+		handgun->toggleVis();
+		weapon = rocket_launcher;
+	}
+	else if (weapon == rocket_launcher) {
+		rocket_launcher->toggleVis();
+		handgun->toggleVis();
+		weapon = handgun;
+	}
 }
 
 //// MOVEMENT ////
@@ -106,6 +153,7 @@ void ASMCharacter::MovementStuff(float DeltaTime) {
 		MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
 }
 
+//Auto bhop.
 void ASMCharacter::NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
 	bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult & Hit) {
 	if (spaceHold) {
