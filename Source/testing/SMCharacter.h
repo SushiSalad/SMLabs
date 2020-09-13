@@ -32,6 +32,17 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = cable)
 	class UCableComponent* rope;
 
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
+	class ABaseWeapon* weapon;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<ABaseWeapon> HandgunClass;
+	class ABaseWeapon* handgun;
+
+	UPROPERTY(EditAnywhere)
+	TSubclassOf<ABaseWeapon> RocketClass;
+	class ABaseWeapon* rocket_launcher;
+
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
@@ -41,6 +52,17 @@ public:
 	//On hit, if space held, jump
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
 		bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult & Hit) override;
+
+	void SwitchWeapon();
+
+	void Fire();
+
+	void Reload();
+		
+	void RopeStuff(float DeltaTime);
+	void FireRope();
+	void PullRope();
+	void DetachRope();
 
 	//Jumping
 	void StartJump();
@@ -53,12 +75,15 @@ public:
 	float GroundAcceleration;
 	UPROPERTY(EditAnywhere)
 	float MaxAirSpeedIncrease;
-	int TicksOnGround;
+	int TicksOnGround;	
 	bool spaceHold;
 
-	void MovementStuff(float DeltaTime);
-	FVector CreateAccelerationVector();
+	UFUNCTION(NetMulticast, Reliable) void MovementStuff(float DeltaTime);
+	UFUNCTION(BlueprintCallable) FVector CreateAccelerationVector();
 	FVector GetNextFrameVelocity(FVector AccelVector, float DeltaTime);
+
+	UFUNCTION(Client, Reliable)
+	void ReplicateMovementPlease(float dTime);
 
 	//Swinging
 	UPROPERTY(EditAnywhere)
@@ -72,8 +97,5 @@ public:
 	FHitResult ropeTarget;
 	//ASMRope rope;
 
-	void RopeStuff(float DeltaTime);
-	void FireRope();
-	void PullRope();
-	void DetachRope();
+	
 };

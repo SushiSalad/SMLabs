@@ -17,7 +17,6 @@ ABaseWeapon::ABaseWeapon() {
 	reloadSpeed = 0;
 	weight = 0;
 
-	//.onFire.AddDynamic(this, Fire());
 }
 
 // Called when the game starts or when spawned
