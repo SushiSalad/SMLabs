@@ -75,12 +75,15 @@ public:
 	float GroundAcceleration;
 	UPROPERTY(EditAnywhere)
 	float MaxAirSpeedIncrease;
-	int TicksOnGround;
+	int TicksOnGround;	
 	bool spaceHold;
 
-	void MovementStuff(float DeltaTime);
-	FVector CreateAccelerationVector();
+	UFUNCTION(NetMulticast, Reliable) void MovementStuff(float DeltaTime);
+	UFUNCTION(BlueprintCallable) FVector CreateAccelerationVector();
 	FVector GetNextFrameVelocity(FVector AccelVector, float DeltaTime);
+
+	UFUNCTION(Client, Reliable)
+	void ReplicateMovementPlease(float dTime);
 
 	//Swinging
 	UPROPERTY(EditAnywhere)

@@ -1,5 +1,6 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
+#pragma once
 
 #include "SMCharacter.h"
 #include "MathUtil.h"
@@ -78,7 +79,8 @@ void ASMCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	MovementStuff(DeltaTime);
+	
+	ReplicateMovementPlease_Implementation(DeltaTime);
 	RopeStuff(DeltaTime);
 }
 
@@ -104,6 +106,10 @@ void ASMCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction(FName("Fire"), IE_Pressed, this, &ASMCharacter::Fire);
 	PlayerInputComponent->BindAction(FName("Reload"), IE_Pressed, this, &ASMCharacter::Reload);
 	PlayerInputComponent->BindAction(FName("SwitchWeapon"), IE_Pressed, this, &ASMCharacter::SwitchWeapon);
+}
+
+void ASMCharacter::ReplicateMovementPlease_Implementation(float dTime) {
+	MovementStuff(dTime);
 }
 
 //// WEAPON STUFF ///
@@ -137,7 +143,7 @@ void ASMCharacter::SwitchWeapon() {
 
 //// MOVEMENT ////
 
-void ASMCharacter::MovementStuff(float DeltaTime) {
+void ASMCharacter::MovementStuff_Implementation(float DeltaTime) {
 	if (spaceHold) {
 		SMCharacterMovementComponent->GroundFriction = 0;
 		SMCharacterMovementComponent->BrakingDecelerationWalking = 0;
@@ -149,6 +155,7 @@ void ASMCharacter::MovementStuff(float DeltaTime) {
 		GroundAcceleration = 10000;
 	}
 	GetMovementComponent()->Velocity += GetNextFrameVelocity(CreateAccelerationVector(), DeltaTime);
+	//ReplicateMovementPlease_Implementation(DeltaTime);
 	DebugUtil::Message(FString::Printf(TEXT("%.2f u/s"), 
 		MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
 }
