@@ -11,15 +11,17 @@ class TESTING_API ASMCharacter : public ACharacter
 {
 	GENERATED_BODY()
 
-public:
-	// Sets default values for this character's properties
-	ASMCharacter();
-
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
 public:	
+	// Sets default values for this character's properties
+	ASMCharacter();
+
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const override;
+
+	//Components
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	class UCameraComponent* FPSCameraComponent;
 
@@ -28,9 +30,6 @@ public:
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	class UCharacterMovementComponent* SMCharacterMovementComponent;
-
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = cable)
-	class UCableComponent* rope;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	class ABaseWeapon* weapon;
@@ -42,6 +41,12 @@ public:
 	UPROPERTY(EditAnywhere)
 	TSubclassOf<ABaseWeapon> RocketClass;
 	class ABaseWeapon* rocket_launcher;
+
+	//Properties
+	UPROPERTY(Replicated, BlueprintReadWrite)
+	float Health;
+	UPROPERTY(Replicated, BlueprintReadWrite)
+	float Armor;
 
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
@@ -58,11 +63,6 @@ public:
 	void Fire();
 
 	void Reload();
-		
-	void RopeStuff(float DeltaTime);
-	void FireRope();
-	void PullRope();
-	void DetachRope();
 
 	//Jumping
 	void StartJump();
@@ -75,27 +75,30 @@ public:
 	float GroundAcceleration;
 	UPROPERTY(EditAnywhere)
 	float MaxAirSpeedIncrease;
-	int TicksOnGround;	
 	bool spaceHold;
 
-	UFUNCTION(NetMulticast, Reliable) void MovementStuff(float DeltaTime);
-	UFUNCTION(BlueprintCallable) FVector CreateAccelerationVector();
-	FVector GetNextFrameVelocity(FVector AccelVector, float DeltaTime);
+	UFUNCTION(Server, Reliable, WithValidation) 
+	void Srv_MovementStuff(float DeltaTime);
 
-	UFUNCTION(Client, Reliable)
-	void ReplicateMovementPlease(float dTime);
+	void MovementStuff(float DeltaTime);
+
+	UFUNCTION(BlueprintCallable) 
+	FVector CreateAccelerationVector();
+
+	UFUNCTION(BlueprintCallable)
+	FVector GetNextFrameVelocity(FVector AccelVector, float DeltaTime);
 
 	//Swinging
 	UPROPERTY(EditAnywhere)
 	float MaxRopeDistance;
 	UPROPERTY(EditAnywhere)
 	float RopePullSpeed;
-	UPROPERTY(EditAnywhere)
-	bool WidowGrapple;
 	bool ropeFired;
 	bool ropeAttached;
 	FHitResult ropeTarget;
-	//ASMRope rope;
 
+	void RopeStuff(float DeltaTime);
+	void FireRope();
+	void DetachRope();
 	
 };
