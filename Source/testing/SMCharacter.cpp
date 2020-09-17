@@ -14,9 +14,14 @@
 #include "CableComponent.h"
 #include "BaseWeapon.h"
 #include "Animation/AnimInstance.h"
+#include "Net/UnrealNetwork.h"
 
 ASMCharacter::ASMCharacter()
 {
+
+	bReplicates = true;
+	SetReplicateMovement(true);
+
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
@@ -31,6 +36,9 @@ ASMCharacter::ASMCharacter()
 	//Other Components
 	SMCapsuleComponent = GetCapsuleComponent();
 	SMCharacterMovementComponent = GetCharacterMovement();
+
+	//Axis variables
+	
 
 	//Rope
 	rope = CreateDefaultSubobject<UCableComponent>(TEXT("Rope"));
@@ -77,10 +85,13 @@ void ASMCharacter::BeginPlay()
 // Called every frame
 void ASMCharacter::Tick(float DeltaTime)
 {
+
 	Super::Tick(DeltaTime);
 
+	fAxis = AActor::GetInputAxisValue(FName("MoveForward"));
+	rAxis = AActor::GetInputAxisValue(FName("MoveRight"));
 	
-	ReplicateMovementPlease_Implementation(DeltaTime);
+	ReplicateMovementPlease_Implementation(DeltaTime, fAxis, rAxis);
 	RopeStuff(DeltaTime);
 }
 
@@ -108,8 +119,15 @@ void ASMCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction(FName("SwitchWeapon"), IE_Pressed, this, &ASMCharacter::SwitchWeapon);
 }
 
-void ASMCharacter::ReplicateMovementPlease_Implementation(float dTime) {
-	MovementStuff(dTime);
+void ASMCharacter::ReplicateMovementPlease_Implementation(float dTime, float _fAxis, float _rAxis) {
+	//fAxis = _fAxis;
+	//rAxis = _rAxis;
+	
+	FVector vel = MovementStuff(dTime, _fAxis, _rAxis);
+	SetVelocity_Client(vel, dTime);
+	MovementStuff_Client();
+	SetVelocity_Server(vel, dTime);
+	
 }
 
 //// WEAPON STUFF ///
@@ -142,8 +160,12 @@ void ASMCharacter::SwitchWeapon() {
 }
 
 //// MOVEMENT ////
+//The networked movement is probably weird because it keeps calcing vel with 0 initial vel
 
-void ASMCharacter::MovementStuff_Implementation(float DeltaTime) {
+
+FVector ASMCharacter::MovementStuff(float DeltaTime, float _fAxis, float _rAxis) {
+
+	//Don't apply friction while jumping prevent losing speed while bhopping
 	if (spaceHold) {
 		SMCharacterMovementComponent->GroundFriction = 0;
 		SMCharacterMovementComponent->BrakingDecelerationWalking = 0;
@@ -154,37 +176,43 @@ void ASMCharacter::MovementStuff_Implementation(float DeltaTime) {
 		SMCharacterMovementComponent->BrakingDecelerationWalking = 2048.0;
 		GroundAcceleration = 10000;
 	}
-	GetMovementComponent()->Velocity += GetNextFrameVelocity(CreateAccelerationVector(), DeltaTime);
+
+	
+
+	//Actually calculate next velocity.
+	FVector nextVel = GetNextFrameVelocity(CreateAccelerationVector(_fAxis, _rAxis), DeltaTime);
+	return nextVel;
 	//ReplicateMovementPlease_Implementation(DeltaTime);
-	DebugUtil::Message(FString::Printf(TEXT("%.2f u/s"), 
-		MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
+	
 }
 
-//Auto bhop.
-void ASMCharacter::NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
-	bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult & Hit) {
+void ASMCharacter::MovementStuff_Client_Implementation(){
+	
 	if (spaceHold) {
-		Jump();
-	} else {
-		StopJumping();
+		SMCharacterMovementComponent->GroundFriction = 0;
+		SMCharacterMovementComponent->BrakingDecelerationWalking = 0;
+		SMCharacterMovementComponent->BrakingDecelerationFlying = 0;
+		GroundAcceleration = 10000;
 	}
-}
+	else {
+		SMCharacterMovementComponent->GroundFriction = 8;
+		SMCharacterMovementComponent->BrakingDecelerationWalking = 2048.0;
+		GroundAcceleration = 10000;
+	}
 
-void ASMCharacter::StartJump() {
-	bPressedJump = true;
-	spaceHold = true;
-}
+	//DebugUtil::Message(FString::Printf(TEXT("%.2f u/s"),
+		//MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
 
-void ASMCharacter::StopJump() {
-	bPressedJump = false;
-	spaceHold = false;
 }
 
 //creates the acceleration vector for the next frame
-FVector ASMCharacter::CreateAccelerationVector() {
+FVector ASMCharacter::CreateAccelerationVector(float _fAxis, float _rAxis) {
 	FVector accel;
-	accel = AActor::GetActorForwardVector() * AActor::GetInputAxisValue(FName("MoveForward"));
-	accel += AActor::GetActorRightVector() * AActor::GetInputAxisValue(FName("MoveRight"));
+	//accel = AActor::GetActorForwardVector() * AActor::GetInputAxisValue(FName("MoveForward"));
+	//accel += AActor::GetActorRightVector() * AActor::GetInputAxisValue(FName("MoveRight"));
+	accel = AActor::GetActorForwardVector() * _fAxis;
+	accel += AActor::GetActorRightVector() * _rAxis;
+
 	accel.Normalize(0.0001f);
 	accel *= (GetMovementComponent()->IsFalling() || bPressedJump) ? AirAcceleration : GroundAcceleration;
 	//GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Blue, FString::Printf(TEXT("%f, %f, %f"), accel.X, accel.Y, accel.Z));
@@ -206,6 +234,44 @@ FVector ASMCharacter::GetNextFrameVelocity(FVector AccelVector, float DeltaTime)
 	} else {
 		return AccelVector * DeltaTime;
 	}
+}
+
+void ASMCharacter::SetVelocity_Server_Implementation(FVector vel, float DeltaTime) {
+
+	DebugUtil::Message(FString::Printf(TEXT("Server: %.2f u/s"),
+		MathUtil::ToHammerUnits(GetMovementComponent()->Velocity.Size())), DeltaTime);
+
+	
+	GetMovementComponent()->Velocity += vel;
+}
+
+void ASMCharacter::SetVelocity_Client_Implementation(FVector vel, float DeltaTime) {
+
+	DebugUtil::Message(FString::Printf(TEXT("Client: %.2f u/s"),
+		MathUtil::ToHammerUnits(GetMovementComponent()->Velocity.Size())), DeltaTime);
+
+	GetMovementComponent()->Velocity += vel;
+}
+
+//Auto bhop.
+void ASMCharacter::NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
+	bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult& Hit) {
+	if (spaceHold) {
+		Jump();
+	}
+	else {
+		StopJumping();
+	}
+}
+
+void ASMCharacter::StartJump() {
+	bPressedJump = true;
+	spaceHold = true;
+}
+
+void ASMCharacter::StopJump() {
+	bPressedJump = false;
+	spaceHold = false;
 }
 
 //// SWINGING ////

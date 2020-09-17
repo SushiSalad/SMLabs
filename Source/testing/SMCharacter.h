@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "SMCharacter.generated.h"
 
+
 UCLASS()
 class TESTING_API ASMCharacter : public ACharacter
 {
@@ -68,6 +69,12 @@ public:
 	void StartJump();
 	void StopJump();
 
+	//Input
+	UPROPERTY(EditAnywhere)
+	float fAxis;
+	UPROPERTY(EditAnywhere)
+	float rAxis;
+
 	//Source Movement
 	UPROPERTY(EditAnywhere)
 	float AirAcceleration;
@@ -78,12 +85,19 @@ public:
 	int TicksOnGround;	
 	bool spaceHold;
 
-	UFUNCTION(NetMulticast, Reliable) void MovementStuff(float DeltaTime);
-	UFUNCTION(BlueprintCallable) FVector CreateAccelerationVector();
+	FVector MovementStuff(float DeltaTime, float _fAxis, float _rAxis);
+	UFUNCTION(Client, Reliable) void MovementStuff_Client();
+	UFUNCTION(BlueprintCallable) FVector CreateAccelerationVector(float _fAxis, float _rAxis);
 	FVector GetNextFrameVelocity(FVector AccelVector, float DeltaTime);
 
+	UFUNCTION(Server, Reliable)
+	void SetVelocity_Server(FVector vel, float DeltaTime);
+
 	UFUNCTION(Client, Reliable)
-	void ReplicateMovementPlease(float dTime);
+	void SetVelocity_Client(FVector vel, float DeltaTime);
+
+	UFUNCTION(Server, Reliable)
+	void ReplicateMovementPlease(float dTime, float _fAxis, float _rAxis);
 
 	//Swinging
 	UPROPERTY(EditAnywhere)
