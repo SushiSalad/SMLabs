@@ -16,8 +16,8 @@
 #include "Animation/AnimInstance.h"
 #include "Net/UnrealNetwork.h"
 
-ASMCharacter::ASMCharacter()
-{
+
+ASMCharacter::ASMCharacter() {
 
 	bReplicates = true;
 	SetReplicateMovement(true);
@@ -28,10 +28,6 @@ ASMCharacter::ASMCharacter()
 	//First Person Camera
 	FPSCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
 	FPSCameraComponent->bUsePawnControlRotation = true;
-
-	//FAttachmentTransformRules rules(EAttachmentRule::KeepRelative, false);
-	
-	//ssaFPSCameraComponent->SetRelativeLocation(FVector(0.0f, 0.0f, 500.0f + BaseEyeHeight));
 
 	//Other Components
 	SMCapsuleComponent = GetCapsuleComponent();
@@ -62,8 +58,7 @@ ASMCharacter::ASMCharacter()
 }
 
 // Called when the game starts or when spawned
-void ASMCharacter::BeginPlay()
-{
+void ASMCharacter::BeginPlay() {
 	Super::BeginPlay();
 
 	//spawn and set weapons
@@ -83,21 +78,23 @@ void ASMCharacter::BeginPlay()
 }
 
 // Called every frame
-void ASMCharacter::Tick(float DeltaTime)
-{
+void ASMCharacter::Tick(float DeltaTime) {
 
 	Super::Tick(DeltaTime);
 
 	fAxis = AActor::GetInputAxisValue(FName("MoveForward"));
 	rAxis = AActor::GetInputAxisValue(FName("MoveRight"));
 	
-	ReplicateMovementPlease_Implementation(DeltaTime, fAxis, rAxis);
+	ClientSetVelocity(ClientMovementStuff(0.01666667, fAxis, rAxis), DeltaTime);
+	
+	ReplicateMovementPlease(0.01666667, fAxis, rAxis, GetMovementComponent()->Velocity);
+	
+	//MovementStuff(DeltaTime);
 	RopeStuff(DeltaTime);
 }
 
 // Called to bind functionality to input
-void ASMCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent)
-{
+void ASMCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	//Setup movement bindings
@@ -119,15 +116,9 @@ void ASMCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction(FName("SwitchWeapon"), IE_Pressed, this, &ASMCharacter::SwitchWeapon);
 }
 
-void ASMCharacter::ReplicateMovementPlease_Implementation(float dTime, float _fAxis, float _rAxis) {
-	//fAxis = _fAxis;
-	//rAxis = _rAxis;
-	
-	FVector vel = MovementStuff(dTime, _fAxis, _rAxis);
-	SetVelocity_Client(vel, dTime);
-	MovementStuff_Client();
-	SetVelocity_Server(vel, dTime);
-	
+
+void ASMCharacter::ReplicateMovementPlease_Implementation(float dTime, float _fAxis, float _rAxis, FVector iniVel) {
+	ServerSetVelocity(ServerMovementStuff(dTime, _fAxis, _rAxis), dTime, iniVel);
 }
 
 //// WEAPON STUFF ///
@@ -160,12 +151,12 @@ void ASMCharacter::SwitchWeapon() {
 }
 
 //// MOVEMENT ////
-//The networked movement is probably weird because it keeps calcing vel with 0 initial vel
+//I have no fucking clue why this is acting weird
 
-
-FVector ASMCharacter::MovementStuff(float DeltaTime, float _fAxis, float _rAxis) {
+FVector ASMCharacter::ClientMovementStuff(float DeltaTime, float _fAxis, float _rAxis) {
 
 	//Don't apply friction while jumping prevent losing speed while bhopping
+
 	if (spaceHold) {
 		SMCharacterMovementComponent->GroundFriction = 0;
 		SMCharacterMovementComponent->BrakingDecelerationWalking = 0;
@@ -177,42 +168,45 @@ FVector ASMCharacter::MovementStuff(float DeltaTime, float _fAxis, float _rAxis)
 		GroundAcceleration = 10000;
 	}
 
-	
-
-	//Actually calculate next velocity.
-	FVector nextVel = GetNextFrameVelocity(CreateAccelerationVector(_fAxis, _rAxis), DeltaTime);
-	return nextVel;
+	FVector vel = ClientGetNextFrameVelocity(ClientCreateAccelerationVector(_fAxis, _rAxis), DeltaTime);
+	return vel;
 	//ReplicateMovementPlease_Implementation(DeltaTime);
 	
 }
 
-void ASMCharacter::MovementStuff_Client_Implementation(){
-	
+FVector ASMCharacter::ServerMovementStuff(float DeltaTime, float _fAxis, float _rAxis) {
 	if (spaceHold) {
 		SMCharacterMovementComponent->GroundFriction = 0;
 		SMCharacterMovementComponent->BrakingDecelerationWalking = 0;
 		SMCharacterMovementComponent->BrakingDecelerationFlying = 0;
-		GroundAcceleration = 10000;
+		GroundAcceleration = 0;
 	}
 	else {
 		SMCharacterMovementComponent->GroundFriction = 8;
 		SMCharacterMovementComponent->BrakingDecelerationWalking = 2048.0;
 		GroundAcceleration = 10000;
 	}
-
-	//DebugUtil::Message(FString::Printf(TEXT("%.2f u/s"),
-		//MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
-
+	FVector vel = ServerGetNextFrameVelocity(ServerCreateAccelerationVector(_fAxis, _rAxis), DeltaTime);
+	return vel;
+	//ReplicateMovementPlease_Implementation(DeltaTime);
+	DebugUtil::Message(FString::Printf(TEXT("%.2f u/s"),
+		MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
 }
 
-//creates the acceleration vector for the next frame
-FVector ASMCharacter::CreateAccelerationVector(float _fAxis, float _rAxis) {
+FVector ASMCharacter::ClientCreateAccelerationVector(float _fAxis, float _rAxis) {
 	FVector accel;
-	//accel = AActor::GetActorForwardVector() * AActor::GetInputAxisValue(FName("MoveForward"));
-	//accel += AActor::GetActorRightVector() * AActor::GetInputAxisValue(FName("MoveRight"));
 	accel = AActor::GetActorForwardVector() * _fAxis;
 	accel += AActor::GetActorRightVector() * _rAxis;
+	accel.Normalize(0.0001f);
+	accel *= (GetMovementComponent()->IsFalling() || bPressedJump) ? AirAcceleration : GroundAcceleration;
+	//GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Blue, FString::Printf(TEXT("%f, %f, %f"), accel.X, accel.Y, accel.Z));
+	return accel;
+}
 
+FVector ASMCharacter::ServerCreateAccelerationVector(float _fAxis, float _rAxis) {
+	FVector accel;
+	accel = AActor::GetActorForwardVector() * _fAxis;
+	accel += AActor::GetActorRightVector() * _rAxis;
 	accel.Normalize(0.0001f);
 	accel *= (GetMovementComponent()->IsFalling() || bPressedJump) ? AirAcceleration : GroundAcceleration;
 	//GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Blue, FString::Printf(TEXT("%f, %f, %f"), accel.X, accel.Y, accel.Z));
@@ -220,7 +214,7 @@ FVector ASMCharacter::CreateAccelerationVector(float _fAxis, float _rAxis) {
 }
 
 //use the acceleration if the the magnitude of the next frame's velocity is less than the limit
-FVector ASMCharacter::GetNextFrameVelocity(FVector AccelVector, float DeltaTime) {
+FVector ASMCharacter::ClientGetNextFrameVelocity(FVector AccelVector, float DeltaTime) {
 	float magVprojA = GetMovementComponent()->Velocity.CosineAngle2D(AccelVector)*GetMovementComponent()->Velocity.Size();
 	float magAxT = (AccelVector * DeltaTime).Size();
 	if (GetMovementComponent()->IsFalling() || bPressedJump) {
@@ -236,21 +230,35 @@ FVector ASMCharacter::GetNextFrameVelocity(FVector AccelVector, float DeltaTime)
 	}
 }
 
-void ASMCharacter::SetVelocity_Server_Implementation(FVector vel, float DeltaTime) {
-
-	DebugUtil::Message(FString::Printf(TEXT("Server: %.2f u/s"),
-		MathUtil::ToHammerUnits(GetMovementComponent()->Velocity.Size())), DeltaTime);
-
-	
-	GetMovementComponent()->Velocity += vel;
+FVector ASMCharacter::ServerGetNextFrameVelocity(FVector AccelVector, float DeltaTime) {
+	float magVprojA = GetMovementComponent()->Velocity.CosineAngle2D(AccelVector) * GetMovementComponent()->Velocity.Size();
+	float magAxT = (AccelVector * DeltaTime).Size();
+	if (GetMovementComponent()->IsFalling() || bPressedJump) {
+		if (magVprojA < (MaxAirSpeedIncrease - magAxT)) {
+			return AccelVector * DeltaTime;
+		}
+		else if (magVprojA < MaxAirSpeedIncrease) {
+			return (MaxAirSpeedIncrease - magVprojA) * (AccelVector / AccelVector.Size());
+		}
+		else {
+			return FVector(0, 0, 0);
+		}
+	}
+	else {
+		return AccelVector * DeltaTime;
+	}
 }
 
-void ASMCharacter::SetVelocity_Client_Implementation(FVector vel, float DeltaTime) {
-
-	DebugUtil::Message(FString::Printf(TEXT("Client: %.2f u/s"),
-		MathUtil::ToHammerUnits(GetMovementComponent()->Velocity.Size())), DeltaTime);
-
+void ASMCharacter::ClientSetVelocity(FVector vel, float DeltaTime){
 	GetMovementComponent()->Velocity += vel;
+	DebugUtil::Message(FString::Printf(TEXT("Client: %.2f u/s"),
+		MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
+}
+
+void ASMCharacter::ServerSetVelocity(FVector vel, float DeltaTime, FVector iniVel) {
+	GetMovementComponent()->Velocity += vel;
+	DebugUtil::Message(FString::Printf(TEXT("%.2f"), AirAcceleration), DeltaTime);
+	DebugUtil::Message(FString::Printf(TEXT("%.2f"), GroundAcceleration), DeltaTime);
 }
 
 //Auto bhop.
@@ -273,7 +281,6 @@ void ASMCharacter::StopJump() {
 	bPressedJump = false;
 	spaceHold = false;
 }
-
 //// SWINGING ////
 
 void ASMCharacter::RopeStuff(float DeltaTime) {

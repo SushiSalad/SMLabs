@@ -54,6 +54,8 @@ public:
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
 		bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult & Hit) override;
 
+	
+
 	void SwitchWeapon();
 
 	void Fire();
@@ -84,21 +86,25 @@ public:
 	float MaxAirSpeedIncrease;
 	int TicksOnGround;	
 	bool spaceHold;
+	
+	//Client functions
+	FVector ClientMovementStuff(float DeltaTime, float _fAxis, float _rAxis);
+	FVector ClientCreateAccelerationVector(float _fAxis, float _rAxis);
+	FVector ClientGetNextFrameVelocity(FVector AccelVector, float DeltaTime);
+	void ClientSetVelocity(FVector vel, float DeltaTime);
 
-	FVector MovementStuff(float DeltaTime, float _fAxis, float _rAxis);
-	UFUNCTION(Client, Reliable) void MovementStuff_Client();
-	UFUNCTION(BlueprintCallable) FVector CreateAccelerationVector(float _fAxis, float _rAxis);
-	FVector GetNextFrameVelocity(FVector AccelVector, float DeltaTime);
-
+	//Server functions
 	UFUNCTION(Server, Reliable)
-	void SetVelocity_Server(FVector vel, float DeltaTime);
+	void ReplicateMovementPlease(float dTime, float _fAxis, float _rAxis, FVector iniVel);
+	FVector ServerMovementStuff(float DeltaTime, float _fAxis, float _rAxis);
+	FVector ServerCreateAccelerationVector(float _fAxis, float _rAxis);
+	FVector ServerGetNextFrameVelocity(FVector AccelVector, float DeltaTime);
+	void ServerSetVelocity(FVector vel, float DeltaTime, FVector iniVel);
 
-	UFUNCTION(Client, Reliable)
-	void SetVelocity_Client(FVector vel, float DeltaTime);
-
-	UFUNCTION(Server, Reliable)
-	void ReplicateMovementPlease(float dTime, float _fAxis, float _rAxis);
-
+	//Input
+	float fAxis;
+	float rAxis;
+	
 	//Swinging
 	UPROPERTY(EditAnywhere)
 	float MaxRopeDistance;
