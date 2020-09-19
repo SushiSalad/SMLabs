@@ -8,6 +8,7 @@
 #include "SMGameState.h"
 #include "SMPlayerState.h"
 #include "SMGameMode.h"
+#include "SMCharacterMovementComponent.h"
 
 #include "Components/SceneComponent.h"
 #include "Camera/CameraComponent.h"
@@ -20,7 +21,8 @@
 #include "Kismet/GameplayStatics.h"
 
 //Constructor
-ASMCharacter::ASMCharacter()
+ASMCharacter::ASMCharacter(const FObjectInitializer& ObjectInitializer) :
+	Super(ObjectInitializer.SetDefaultSubobjectClass<USMCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
 {
 	//Unreal values
 	PrimaryActorTick.bCanEverTick = true;
@@ -32,7 +34,8 @@ ASMCharacter::ASMCharacter()
 	FPSCameraComponent->bUsePawnControlRotation = true;
 	//Other Components
 	SMCapsuleComponent = GetCapsuleComponent();
-	SMCharacterMovementComponent = GetCharacterMovement();
+	//SMCharacterMovementComponent = GetMovementComponent();
+	
 
 	//Default values
 	AirAcceleration = 20000;
@@ -85,7 +88,7 @@ void ASMCharacter::Tick(float DeltaTime)
 	Super::Tick(DeltaTime);
 
 	//MovementStuff(DeltaTime);
-	Srv_MovementStuff(DeltaTime);
+	//Srv_MovementStuff(DeltaTime);
 	RopeStuff(DeltaTime);
 }
 
@@ -110,6 +113,12 @@ void ASMCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction(FName("Fire"), IE_Pressed, this, &ASMCharacter::Fire);
 	PlayerInputComponent->BindAction(FName("Reload"), IE_Pressed, this, &ASMCharacter::Reload);
 	PlayerInputComponent->BindAction(FName("SwitchWeapon"), IE_Pressed, this, &ASMCharacter::SwitchWeapon);
+}
+
+void ASMCharacter::PostInitializeComponents() {
+	Super::PostInitializeComponents();
+
+	SMCharacterMovementComponent = Cast<USMCharacterMovementComponent>(Super::GetMovementComponent());
 }
 
 //// DAMAGE STUFF ////
@@ -148,10 +157,9 @@ void ASMCharacter::SwitchWeapon() {
 //// MOVEMENT ////
 
 void ASMCharacter::Srv_MovementStuff_Implementation(float DeltaTime) {
-	ASMGameState* GameState = Cast<ASMGameState>(UGameplayStatics::GetGameState(GetWorld()));
+	//ASMGameState* GameState = Cast<ASMGameState>(UGameplayStatics::GetGameState(GetWorld()));
 
-	//ASMPlayerState* test = Cast<ASMPlayerState>(GameState->PlayerArray.Top());
-	
+	MovementStuff(DeltaTime);
 }
 bool ASMCharacter::Srv_MovementStuff_Validate(float DeltaTime) {
 	return true;
@@ -196,9 +204,9 @@ void ASMCharacter::StopJump() {
 //creates the acceleration vector for the next frame
 FVector ASMCharacter::CreateAccelerationVector() {
 	FVector accel;
-	accel = AActor::GetActorForwardVector() * GetInputAxisValue(FName("MoveForward"));
-	GetInputAxisValue(FName("MoveForward"));
-	accel += AActor::GetActorRightVector() * GetInputAxisValue(FName("MoveRight"));
+	accel = GetActorForwardVector() * GetInputAxisValue(FName("MoveForward"));
+	accel += GetActorRightVector() * GetInputAxisValue(FName("MoveRight"));
+	//accel = GetLastMovementInputVector();
 	accel.Normalize(0.0001f);
 	accel *= (GetMovementComponent()->IsFalling() || bPressedJump) ? AirAcceleration : GroundAcceleration;
 	//GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Blue, FString::Printf(TEXT("%f, %f, %f"), accel.X, accel.Y, accel.Z));

@@ -17,7 +17,10 @@ protected:
 
 public:	
 	// Sets default values for this character's properties
-	ASMCharacter();
+	ASMCharacter(const FObjectInitializer& ObjectInitializer);
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+		FORCEINLINE class USMCharacterMovementComponent* GetSMMovementComponent() const { return SMCharacterMovementComponent; }
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const override;
 
@@ -29,7 +32,7 @@ public:
 	class UCapsuleComponent* SMCapsuleComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
-	class UCharacterMovementComponent* SMCharacterMovementComponent;
+	class USMCharacterMovementComponent* SMCharacterMovementComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	class ABaseWeapon* weapon;
@@ -57,6 +60,8 @@ public:
 	//On hit, if space held, jump
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
 		bool bSelfMoved, FVector HitLocation, FVector HitNormal, FVector NormalImpulse, const FHitResult & Hit) override;
+
+	virtual void PostInitializeComponents() override;
 
 	void SwitchWeapon();
 

@@ -24,6 +24,7 @@ public:
 	virtual void PostLogin(APlayerController* NewPlayer) override;
 
 	// Override BeginPlay, since we need that to recreate the BP version
-	//virtual void BeginPlay() override;
+	//virtual void BeginPlay() override;
+
 
 };
