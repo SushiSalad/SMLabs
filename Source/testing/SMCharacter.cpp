@@ -7,6 +7,7 @@
 #include "Components/SceneComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/PawnMovementComponent.h"
+#include "SMCharacterMovementComponent.h"
 #include "Components/CapsuleComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "DrawDebugHelpers.h"
@@ -17,7 +18,9 @@
 #include "Net/UnrealNetwork.h"
 
 
-ASMCharacter::ASMCharacter() {
+ASMCharacter::ASMCharacter(const FObjectInitializer& ObjectInitializer)
+	: Super(ObjectInitializer.SetDefaultSubobjectClass<USMCharacterMovementComponent>(ACharacter::CharacterMovementComponentName))
+{
 
 	bReplicates = true;
 	SetReplicateMovement(true);
@@ -31,10 +34,7 @@ ASMCharacter::ASMCharacter() {
 
 	//Other Components
 	SMCapsuleComponent = GetCapsuleComponent();
-	SMCharacterMovementComponent = GetCharacterMovement();
-
-	//Axis variables
-	
+	//SMCharacterMovementComponent = CreateDefaultSubobject<USMCharacterMovementComponent>(TEXT("MovementComponent"));
 
 	//Rope
 	rope = CreateDefaultSubobject<UCableComponent>(TEXT("Rope"));
@@ -85,9 +85,9 @@ void ASMCharacter::Tick(float DeltaTime) {
 	fAxis = AActor::GetInputAxisValue(FName("MoveForward"));
 	rAxis = AActor::GetInputAxisValue(FName("MoveRight"));
 	
-	ClientSetVelocity(ClientMovementStuff(0.01666667, fAxis, rAxis), DeltaTime);
+	//ClientSetVelocity(ClientMovementStuff(0.01666667, fAxis, rAxis), DeltaTime);
 	
-	ReplicateMovementPlease(0.01666667, fAxis, rAxis, GetMovementComponent()->Velocity);
+	//ReplicateMovementPlease(0.01666667, fAxis, rAxis, GetMovementComponent()->Velocity);
 	
 	//MovementStuff(DeltaTime);
 	RopeStuff(DeltaTime);
@@ -114,6 +114,12 @@ void ASMCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	PlayerInputComponent->BindAction(FName("Fire"), IE_Pressed, this, &ASMCharacter::Fire);
 	PlayerInputComponent->BindAction(FName("Reload"), IE_Pressed, this, &ASMCharacter::Reload);
 	PlayerInputComponent->BindAction(FName("SwitchWeapon"), IE_Pressed, this, &ASMCharacter::SwitchWeapon);
+}
+
+void ASMCharacter::PostInitializeComponents() {
+	Super::PostInitializeComponents();
+
+	SMCharacterMovementComponent = Cast<USMCharacterMovementComponent>(Super::GetMovementComponent());
 }
 
 
@@ -161,7 +167,7 @@ FVector ASMCharacter::ClientMovementStuff(float DeltaTime, float _fAxis, float _
 		SMCharacterMovementComponent->GroundFriction = 0;
 		SMCharacterMovementComponent->BrakingDecelerationWalking = 0;
 		SMCharacterMovementComponent->BrakingDecelerationFlying = 0;
-		GroundAcceleration = 10000;
+		GroundAcceleration = 0;
 	} else {
 		SMCharacterMovementComponent->GroundFriction = 8;
 		SMCharacterMovementComponent->BrakingDecelerationWalking = 2048.0;

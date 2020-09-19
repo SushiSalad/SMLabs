@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "SMCharacterMovementComponent.h"
 #include "SMCharacter.generated.h"
 
 
@@ -14,7 +15,10 @@ class TESTING_API ASMCharacter : public ACharacter
 
 public:
 	// Sets default values for this character's properties
-	ASMCharacter();
+	ASMCharacter(const FObjectInitializer& ObjectInitializer);
+
+	UFUNCTION(BlueprintCallable, Category = "Movement")
+	FORCEINLINE class USMCharacterMovementComponent* GetSMMovementComponent() const { return SMCharacterMovementComponent; }
 
 protected:
 	// Called when the game starts or when spawned
@@ -27,8 +31,9 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
 	class UCapsuleComponent* SMCapsuleComponent;
 
+	//Dunno what to do with this
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
-	class UCharacterMovementComponent* SMCharacterMovementComponent;
+	class USMCharacterMovementComponent* SMCharacterMovementComponent;
 
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = cable)
 	class UCableComponent* rope;
@@ -49,6 +54,8 @@ public:
 
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	virtual void PostInitializeComponents() override;
 
 	//On hit, if space held, jump
 	virtual void NotifyHit(class UPrimitiveComponent* MyComp, AActor* Other, class UPrimitiveComponent* OtherComp,
@@ -72,9 +79,7 @@ public:
 	void StopJump();
 
 	//Input
-	UPROPERTY(EditAnywhere)
 	float fAxis;
-	UPROPERTY(EditAnywhere)
 	float rAxis;
 
 	//Source Movement
@@ -100,10 +105,6 @@ public:
 	FVector ServerCreateAccelerationVector(float _fAxis, float _rAxis);
 	FVector ServerGetNextFrameVelocity(FVector AccelVector, float DeltaTime);
 	void ServerSetVelocity(FVector vel, float DeltaTime, FVector iniVel);
-
-	//Input
-	float fAxis;
-	float rAxis;
 	
 	//Swinging
 	UPROPERTY(EditAnywhere)
@@ -116,6 +117,4 @@ public:
 	bool ropeAttached;
 	FHitResult ropeTarget;
 	//ASMRope rope;
-
-	
 };
