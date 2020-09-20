@@ -44,8 +44,6 @@ public:
 	float Health;
 	UPROPERTY(Replicated, BlueprintReadWrite)
 	float Armor;
-	float fAxis;
-	float rAxis;
 
 	////Unreal Functions or Events////
 
@@ -71,31 +69,10 @@ public:
 
 	////Movement Stuff////
 
-	//Jumping
 	void StartJump();
 	void StopJump();
 
-	//Source Movement
-	UPROPERTY(EditAnywhere)
-	float AirAcceleration;
-	UPROPERTY(EditAnywhere)
-	float GroundAcceleration;
-	UPROPERTY(EditAnywhere)
-	float MaxAirSpeedIncrease;
 	bool spaceHold;
-
-	UFUNCTION(Server, Reliable, WithValidation) 
-	void Srv_MovementStuff(float DeltaTime);
-
-	void MovementStuff(float DeltaTime);
-
-	UFUNCTION(BlueprintCallable) 
-	FVector CreateAccelerationVector();
-
-	UFUNCTION(BlueprintCallable)
-	FVector GetNextFrameVelocity(FVector AccelVector, float DeltaTime);
-
-	void UpdateFrictions(bool bSpaceHold);
 
 	//Swinging
 	UPROPERTY(EditAnywhere)
@@ -109,5 +86,9 @@ public:
 	void RopeStuff(float DeltaTime);
 	void FireRope();
 	void DetachRope();
-	
+
+	//Testing
+	void MoveForward(float value);
+	void MoveRight(float value);
+
 };

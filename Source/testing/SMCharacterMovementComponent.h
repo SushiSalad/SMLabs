@@ -15,16 +15,26 @@ class TESTING_API USMCharacterMovementComponent : public UCharacterMovementCompo
 	GENERATED_BODY()
 
 public:
-	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction *ThisTickFunction) override;
+	USMCharacterMovementComponent();
 
-	virtual void PerformMovement(float DeltaTime) override;
+	/** The multiplier for acceleration when on ground. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Movement: Walking")
+	float GroundAccelerationMultiplier;
 
-	virtual void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
+	/** The multiplier for acceleration when in air. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Movement: Walking")
+	float AirAccelerationMultiplier;
 
-	virtual bool HandlePendingLaunch() override;
+	/* The vector differential magnitude cap when in air. */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Movement: Jumping / Falling")
+	float AirSpeedCap;
 
-	FVector CreateAccelerationVector();
+	/** Print pos and vel (Source: cl_showpos) */
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Character Movement (General Settings)")
+	uint32 bShowPos : 1;
 
-	FVector GetNextFrameVelocity(FVector AccelVector, float DeltaTime);
-	
+	virtual void CalcVelocity(float DeltaTime, float Friction, bool bFluid, float BrakingDeceleration) override;
+
+	virtual void TickComponent(float DeltaTime, enum ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
+
 };

@@ -34,13 +34,8 @@ ASMCharacter::ASMCharacter(const FObjectInitializer& ObjectInitializer) :
 	FPSCameraComponent->bUsePawnControlRotation = true;
 	//Other Components
 	SMCapsuleComponent = GetCapsuleComponent();
-	//SMCharacterMovementComponent = GetMovementComponent();
-	
 
 	//Default values
-	AirAcceleration = 20000;
-	GroundAcceleration = 10000;
-	MaxAirSpeedIncrease = MathUtil::ToUnrealUnits(30);
 	MaxRopeDistance = 50000;
 	RopePullSpeed = 1;
 	spaceHold = false;
@@ -87,8 +82,14 @@ void ASMCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	MovementStuff(DeltaTime);
-	//Srv_MovementStuff(DeltaTime);
+	if (GetLocalRole() < ROLE_Authority) {
+		DebugUtil::Message(FString::Printf(TEXT("Client: %.2f u/s"),
+			MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
+	} else {
+		DebugUtil::Message(FString::Printf(TEXT("Server: %.2f u/s"),
+			MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
+	}
+
 	RopeStuff(DeltaTime);
 }
 
@@ -98,8 +99,8 @@ void ASMCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompone
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
 	//Setup movement bindings
-	PlayerInputComponent->BindAxis(FName("MoveForward"));
-	PlayerInputComponent->BindAxis(FName("MoveRight"));
+	PlayerInputComponent->BindAxis(FName("MoveForward"), this, &ASMCharacter::MoveForward);
+	PlayerInputComponent->BindAxis(FName("MoveRight"), this, &ASMCharacter::MoveRight);
 	//Setup mouse look bindings
 	PlayerInputComponent->BindAxis("LookHorizontal", this, &ASMCharacter::AddControllerYawInput);
 	PlayerInputComponent->BindAxis("LookVertical", this, &ASMCharacter::AddControllerPitchInput);
@@ -156,26 +157,15 @@ void ASMCharacter::SwitchWeapon() {
 
 //// MOVEMENT STUFF ////
 
-void ASMCharacter::Srv_MovementStuff_Implementation(float DeltaTime) {
-	//ASMGameState* GameState = Cast<ASMGameState>(UGameplayStatics::GetGameState(GetWorld()));
-
-	MovementStuff(DeltaTime);
-}
-bool ASMCharacter::Srv_MovementStuff_Validate(float DeltaTime) {
-	return true;
+void ASMCharacter::MoveForward(float value) {
+	if (!FMath::IsNearlyZero(value)) {
+		AddMovementInput(FQuatRotationMatrix(GetActorQuat()).GetScaledAxis(EAxis::X), value);
+	}
 }
 
-void ASMCharacter::MovementStuff(float DeltaTime) {
-	UpdateFrictions(spaceHold);
-	GetMovementComponent()->Velocity += GetNextFrameVelocity(CreateAccelerationVector(), DeltaTime);
-
-	//Debugging speed
-	if (GetLocalRole() < ROLE_Authority) {
-		DebugUtil::Message(FString::Printf(TEXT("Client: %.2f u/s"),
-			MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
-	} else {
-		DebugUtil::Message(FString::Printf(TEXT("Server: %.2f u/s"),
-			MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
+void ASMCharacter::MoveRight(float value) {
+	if (!FMath::IsNearlyZero(value)) {
+		AddMovementInput(FQuatRotationMatrix(GetActorQuat()).GetScaledAxis(EAxis::Y), value);
 	}
 }
 
@@ -197,51 +187,6 @@ void ASMCharacter::StartJump() {
 void ASMCharacter::StopJump() {
 	bPressedJump = false;
 	spaceHold = false;
-}
-
-//creates the acceleration vector for the next frame
-FVector ASMCharacter::CreateAccelerationVector() {
-	FVector accel;
-	accel = GetActorForwardVector() * GetInputAxisValue(FName("MoveForward"));
-	accel += GetActorRightVector() * GetInputAxisValue(FName("MoveRight"));
-	//accel = GetLastMovementInputVector();
-	accel.Normalize(0.0001f);
-	accel *= (GetMovementComponent()->IsFalling() || bPressedJump) ? AirAcceleration : GroundAcceleration;
-	//GEngine->AddOnScreenDebugMessage(-1, 0.1f, FColor::Blue, FString::Printf(TEXT("%f, %f, %f"), accel.X, accel.Y, accel.Z));
-	return accel;
-}
-
-//use the acceleration if the the magnitude of the next frame's velocity is less than the limit
-FVector ASMCharacter::GetNextFrameVelocity(FVector AccelVector, float DeltaTime) {
-	float magVprojA = GetMovementComponent()->Velocity.CosineAngle2D(AccelVector)*GetMovementComponent()->Velocity.Size();
-	float magAxT = (AccelVector * DeltaTime).Size();
-	if (GetMovementComponent()->IsFalling() || bPressedJump) {
-		if (magVprojA < (MaxAirSpeedIncrease - magAxT)) {
-			return AccelVector * DeltaTime;
-		} else if (magVprojA < MaxAirSpeedIncrease) {
-			return (MaxAirSpeedIncrease - magVprojA) * (AccelVector / AccelVector.Size());
-		} else {
-			return FVector(0, 0, 0);
-		}
-	} else {
-		return AccelVector * DeltaTime;
-	}
-}
-
-//Update the movement components frictions when trying to bhop
-void ASMCharacter::UpdateFrictions(bool bSpaceHold) {
-	if (bSpaceHold) {
-		
-		SMCharacterMovementComponent->GroundFriction = 0;
-		SMCharacterMovementComponent->BrakingDecelerationWalking = 0;
-		SMCharacterMovementComponent->BrakingDecelerationFlying = 0;
-		GroundAcceleration = 10000;
-	} else {
-		SMCharacterMovementComponent->GroundFriction = 8;
-		SMCharacterMovementComponent->BrakingDecelerationWalking = 2048.0;
-		//SMCharacterMovementComponent->BrakingDecelerationFlying = ?;
-		GroundAcceleration = 10000;
-	}
 }
 
 //// ROPE STUFF ////
@@ -277,3 +222,4 @@ void ASMCharacter::DetachRope() {
 	ropeAttached = false;
 	ropeTarget.Reset();
 }
+
