@@ -16,6 +16,18 @@ struct MathUtil {
 		return a * 1.905;
 	}
 
+	static FVector CalculateAcceleration(FVector Velocity, FVector Acceleration, float DeltaTime) {
+		float magVprojA = Velocity.CosineAngle2D(Acceleration)*Velocity.Size();
+		float magAxT = (Acceleration * DeltaTime).Size();
+		if (magVprojA < (ToUnrealUnits(30) - magAxT)) {
+			return Acceleration * DeltaTime;
+		} else if (magVprojA < ToUnrealUnits(30)) {
+			return (ToUnrealUnits(30) - magVprojA) * (Acceleration / Acceleration.Size());
+		} else {
+			return FVector(0, 0, 0);
+		}
+	}
+
 };
 
 struct DebugUtil {
