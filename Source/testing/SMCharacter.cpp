@@ -87,7 +87,7 @@ void ASMCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	//MovementStuff(DeltaTime);
+	MovementStuff(DeltaTime);
 	//Srv_MovementStuff(DeltaTime);
 	RopeStuff(DeltaTime);
 }
@@ -154,7 +154,7 @@ void ASMCharacter::SwitchWeapon() {
 	}
 }
 
-//// MOVEMENT ////
+//// MOVEMENT STUFF ////
 
 void ASMCharacter::Srv_MovementStuff_Implementation(float DeltaTime) {
 	//ASMGameState* GameState = Cast<ASMGameState>(UGameplayStatics::GetGameState(GetWorld()));
@@ -166,19 +166,17 @@ bool ASMCharacter::Srv_MovementStuff_Validate(float DeltaTime) {
 }
 
 void ASMCharacter::MovementStuff(float DeltaTime) {
-	if (spaceHold) {
-		SMCharacterMovementComponent->GroundFriction = 0;
-		SMCharacterMovementComponent->BrakingDecelerationWalking = 0;
-		SMCharacterMovementComponent->BrakingDecelerationFlying = 0;
-		GroundAcceleration = 10000;
-	} else {
-		SMCharacterMovementComponent->GroundFriction = 8;
-		SMCharacterMovementComponent->BrakingDecelerationWalking = 2048.0;
-		GroundAcceleration = 10000;
-	}
+	UpdateFrictions(spaceHold);
 	GetMovementComponent()->Velocity += GetNextFrameVelocity(CreateAccelerationVector(), DeltaTime);
-	DebugUtil::Message(FString::Printf(TEXT("%.2f u/s"),
-		MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
+
+	//Debugging speed
+	if (GetLocalRole() < ROLE_Authority) {
+		DebugUtil::Message(FString::Printf(TEXT("Client: %.2f u/s"),
+			MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
+	} else {
+		DebugUtil::Message(FString::Printf(TEXT("Server: %.2f u/s"),
+			MathUtil::ToHammerUnits(MathUtil::Hypotenuse(GetMovementComponent()->Velocity.X, GetMovementComponent()->Velocity.Y))), DeltaTime);
+	}
 }
 
 //Auto bhop.
@@ -230,7 +228,23 @@ FVector ASMCharacter::GetNextFrameVelocity(FVector AccelVector, float DeltaTime)
 	}
 }
 
-//// SWINGING ////
+//Update the movement components frictions when trying to bhop
+void ASMCharacter::UpdateFrictions(bool bSpaceHold) {
+	if (bSpaceHold) {
+		
+		SMCharacterMovementComponent->GroundFriction = 0;
+		SMCharacterMovementComponent->BrakingDecelerationWalking = 0;
+		SMCharacterMovementComponent->BrakingDecelerationFlying = 0;
+		GroundAcceleration = 10000;
+	} else {
+		SMCharacterMovementComponent->GroundFriction = 8;
+		SMCharacterMovementComponent->BrakingDecelerationWalking = 2048.0;
+		//SMCharacterMovementComponent->BrakingDecelerationFlying = ?;
+		GroundAcceleration = 10000;
+	}
+}
+
+//// ROPE STUFF ////
 
 void ASMCharacter::RopeStuff(float DeltaTime) {
 	if (ropeAttached) {

@@ -311,7 +311,8 @@ void USMCharacterMovementComponent::TickComponent(float DeltaTime, enum ELevelTi
 				CharacterOwner->CheckJumpInput(DeltaTime);
 
 				// apply input to acceleration
-				Acceleration = GetNextFrameVelocity(CreateAccelerationVector(), DeltaTime); //DELLE CHANGE
+				Acceleration = ScaleInputAcceleration(ConstrainInputAcceleration(InputVector));
+				//Acceleration = GetNextFrameVelocity(CreateAccelerationVector(), DeltaTime); //DELLE CHANGE
 				AnalogInputModifier = ComputeAnalogInputModifier();
 			}
 
@@ -826,4 +827,16 @@ void USMCharacterMovementComponent::ReplicateMoveToServer(float DeltaTime, const
 	}
 
 	ClientData->PendingMove = NULL;
+}
+
+bool USMCharacterMovementComponent::HandlePendingLaunch() {
+	if (!PendingLaunchVelocity.IsZero() && HasValidData()) {
+		Velocity = PendingLaunchVelocity;
+		//SetMovementMode(MOVE_Falling);
+		PendingLaunchVelocity = FVector::ZeroVector;
+		bForceNextFloorCheck = false;
+		return true;
+	}
+
+	return false;
 }

@@ -21,6 +21,8 @@ public:
 
 	virtual void ReplicateMoveToServer(float DeltaTime, const FVector& NewAcceleration) override;
 
+	virtual bool HandlePendingLaunch() override;
+
 	FVector CreateAccelerationVector();
 
 	FVector GetNextFrameVelocity(FVector AccelVector, float DeltaTime);
