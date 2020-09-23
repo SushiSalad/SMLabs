@@ -9,7 +9,8 @@
 			"Type": "Runtime",
 			"LoadingPhase": "Default",
 			"AdditionalDependencies": [
-				"Engine"
+				"Engine",
+				"PBCharacterMovement"
 			]
 		}
 	],
@@ -23,6 +24,10 @@
 				"Linux",
 				"Mac"
 			]
+		},
+		{
+			"Name": "GameplayAbilities",
+			"Enabled": true
 		}
 	]
 }
