@@ -3,6 +3,7 @@
 
 struct MathUtil {
 
+	//Returns SQRT(a^2 + b^2)
 	static float Hypotenuse(float a, float b) {
 		return sqrt(a*a + b*b);
 	}
@@ -16,6 +17,7 @@ struct MathUtil {
 		return a * 1.905;
 	}
 
+	//DEPRECATED - Returns an acceleration vector similar to source movement
 	static FVector CalculateAcceleration(FVector Velocity, FVector Acceleration, float DeltaTime) {
 		float magVprojA = Velocity.CosineAngle2D(Acceleration)*Velocity.Size();
 		float magAxT = (Acceleration * DeltaTime).Size();
@@ -32,12 +34,14 @@ struct MathUtil {
 
 struct DebugUtil {
 
+	//Adds a blue debug message to the top-left of the screen
 	static void Message(FString string, float time) {
 		if (GEngine) {
 			GEngine->AddOnScreenDebugMessage(-1, time, FColor::Blue, string);
 		}
 	}
 
+	//Adds a red debug message to the top-left of the screen
 	static void Error(FString string, float time) {
 		if (GEngine) {
 			GEngine->AddOnScreenDebugMessage(-1, time, FColor::Red, string);
