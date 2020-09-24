@@ -15,8 +15,6 @@ ABaseWeapon::ABaseWeapon() {
 	damage = 0;
 	reloadSpeed = 0;
 	weight = 0;
-	maxRange = 0;
-	weaponID = 0;
 
 }
 

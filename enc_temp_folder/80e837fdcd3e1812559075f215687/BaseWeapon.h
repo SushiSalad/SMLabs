@@ -66,7 +66,7 @@ public:
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
 	int maxRange;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
-	uint8 weaponID;
+	int weaponID;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
 	TEnumAsByte<DamageType> damageType;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
