@@ -1,4 +1,3 @@
-// Fill out your copyright notice in the Description page of Project Settings.
 
 
 #include "BaseWeapon.h"
@@ -23,6 +22,8 @@ ABaseWeapon::ABaseWeapon() {
 	reloadSpeed = 0;
 	weight = 0;
 	ammoPerShot = 0;
+	maxRange = 0;
+	weaponID = 0;
 
 }
 

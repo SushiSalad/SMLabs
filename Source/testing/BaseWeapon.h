@@ -1,10 +1,23 @@
-// Fill out your copyright notice in the Description page of Project Settings.
+
+//The actual weapons themselves are set up in blueprint form, 
+//as it is easier to manipulate their meshes there and
+//they are simple enough to be kept as blueprints.
 
 #pragma once
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "BaseWeapon.generated.h"
+
+UENUM()
+enum DamageType {
+
+	//placeholder values for now.
+
+	Physical UMETA(DisplayName = "Physical"),
+	Electric UMETA(DisplayName = "Electric"),
+	Burn UMETA(DisplayName = "Burn"),
+};
 
 namespace EWeaponState
 {
@@ -110,6 +123,12 @@ public:
 	int weight;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
 	UDamageType* damageType;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	int maxRange;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	uint8 weaponID;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	TEnumAsByte<DamageType> damageType;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
 	USkeletalMeshComponent* skeleMesh;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Animation);
