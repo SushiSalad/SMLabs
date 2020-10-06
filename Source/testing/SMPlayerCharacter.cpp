@@ -58,6 +58,7 @@ void ASMPlayerCharacter::BeginPlay() {
 	if (HandgunClass != NULL) {
 		handgun = GetWorld()->SpawnActor<ABaseWeapon>(HandgunClass, FTransform(FVector(0, 0, 0)), Sparam);
 		handgun->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, "hand_rSocket");
+		handgun->SetOwningPawn(this);
 	} else {
 		DebugUtil::Error(FString::Printf(TEXT("There is no attached HandgunClass.")), 10);
 	}
@@ -66,6 +67,7 @@ void ASMPlayerCharacter::BeginPlay() {
 		rocket_launcher = GetWorld()->SpawnActor<ABaseWeapon>(RocketClass, FTransform(FVector(0, 0, 0)), Sparam);
 		rocket_launcher->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, "hand_rSocket");
 		rocket_launcher->toggleVis();
+		rocket_launcher->SetOwningPawn(this);
 	} else {
 		DebugUtil::Error(FString::Printf(TEXT("There is no attached RocketClass.")), 10);
 	}
@@ -78,7 +80,7 @@ void ASMPlayerCharacter::BeginPlay() {
 
 void ASMPlayerCharacter::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
-	DebugUtil::Message(FString::Printf(TEXT("Health: %.1f"), Health), DeltaTime);
+	DebugUtil::Message(FString::Printf(TEXT("Health: %.1f, Armor: %.1f"), Health, Armor), DeltaTime);
 }
 
 void ASMPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
@@ -97,7 +99,8 @@ void ASMPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 //	PlayerInputComponent->BindAction(FName("FireRope"), IE_Pressed, this, &ASMPlayerCharacter::FireRope);
 //	PlayerInputComponent->BindAction(FName("FireRope"), IE_Released, this, &ASMPlayerCharacter::DetachRope);
 	//Setup weapon functionality
-	PlayerInputComponent->BindAction(FName("Fire"), IE_Pressed, this, &ASMPlayerCharacter::Fire);
+	PlayerInputComponent->BindAction(FName("Fire"), IE_Pressed, this, &ASMPlayerCharacter::StartWeaponFire);
+	PlayerInputComponent->BindAction(FName("Fire"), IE_Released, this, &ASMPlayerCharacter::StopWeaponFire);
 	PlayerInputComponent->BindAction(FName("Reload"), IE_Pressed, this, &ASMPlayerCharacter::Reload);
 	PlayerInputComponent->BindAction(FName("SwitchWeapon"), IE_Pressed, this, &ASMPlayerCharacter::SwitchWeapon);
 	PlayerInputComponent->BindAction(FName("Holster"), IE_Pressed, this, &ASMPlayerCharacter::Holster);
@@ -123,20 +126,24 @@ void ASMPlayerCharacter::MoveRight(float value) {
 //Deals damage to this actor after possible armor damage reduction
 //Returns the actual damage dealt
 float ASMPlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) {
+	UE_LOG(LogTemp, Warning, TEXT("Take Damage | Damage: %f, Damaged:%s, Causer: %s"), DamageAmount, *this->GetName(), *DamageCauser->GetName());
 	float actualDamage;
 	if (Armor > 0) {
 		actualDamage = DamageAmount > 10 ? DamageAmount - 5 : FMath::RoundToDouble(DamageAmount / 2.f);
 		float newArmor = Armor - actualDamage;
 		if (newArmor <= 0) {
+			//UE_LOG(LogTemp, Warning, TEXT("Take Armor Damage"));
 			Armor = 0;
-			Health -= newArmor;
+			Health += newArmor; //will be negative, so i add it
 			//TODO (maybe) MakeNoise: armor destroy
 			//TODO MakeNoise: health dmg
 		} else {
+			//UE_LOG(LogTemp, Warning, TEXT("Take Health Damage after armor"));
 			Armor = newArmor;
 			//TODO MakeNoise: armor dmg
 		}
 	} else {
+		//UE_LOG(LogTemp, Warning, TEXT("Take Health Damage"));
 		actualDamage = DamageAmount;
 		Health -= DamageAmount;
 		if (Health <= 0) {
@@ -200,17 +207,36 @@ bool ASMPlayerCharacter::Respawn(FName playerStartTag) {
 
 //// WEAPON STUFF ////
 
-void ASMPlayerCharacter::Fire() {
-	if (weapon->ammo > 0) {
-		weapon->Fire();
-		DebugUtil::Message(FString::Printf(TEXT("Ammo: %d"), weapon->ammo), 2);
-		//this->PlayAnimMontage(weapon->montage[0]);
-		ShootWeapon();
-	} else {
-		//TODO makenoise 
-		Reload();
+void ASMPlayerCharacter::StartWeaponFire() {
+	if (!bWantsToFire) {
+		bWantsToFire = true;
+		if (weapon) {
+			weapon->StartFire();
+			this->PlayAnimMontage(weapon->montage[0]);
+		}
 	}
 }
+
+void ASMPlayerCharacter::StopWeaponFire() {
+	if (bWantsToFire) {
+		bWantsToFire = false;
+		if (weapon) {
+			weapon->StopFire();
+		}
+	}
+}
+
+//void ASMPlayerCharacter::Fire() {
+//	if (weapon->ammo > 0) {
+//		weapon->Fire();
+//		DebugUtil::Message(FString::Printf(TEXT("Ammo: %d"), weapon->ammo), 2);
+//		//this->PlayAnimMontage(weapon->montage[0]);
+//		ShootWeapon();
+//	} else {
+//		//TODO makenoise 
+//		Reload();
+//	}
+//}
 
 void ASMPlayerCharacter::Reload() {
 	if (weapon->ammo < weapon->maxAmmo) {
@@ -251,8 +277,7 @@ void ASMPlayerCharacter::ShootWeapon_Implementation() {
 	FHitResult target;
 
 	if (GetWorld()->LineTraceSingleByChannel(target, cameraLoc, endLoc, ECC_Pawn, collisionParams)) {
-		//UGameplayStatics::ApplyDamage(target.GetActor(), weapon->damage, GetController(), this, UDamageType::StaticClass());
-		UGameplayStatics::ApplyDamage(target.GetActor(), weapon->damage, GetController(), this, UDamageType::StaticClass()); //TODO get dmg and dmg type from weapon
+		UGameplayStatics::ApplyDamage(target.GetActor(), weapon->damage, GetController(), this, UDamageType::StaticClass());
 	}
 }
 bool ASMPlayerCharacter::ShootWeapon_Validate() {

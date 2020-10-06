@@ -14,6 +14,8 @@ class TESTING_API ASMPlayerCharacter : public APBPlayerCharacter
 protected:
 	virtual void BeginPlay() override;
 
+	bool bWantsToFire = false;
+
 public:
 	////Components////
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite)
@@ -64,7 +66,8 @@ public:
 
 	////Weapon Stuff////
 	void SwitchWeapon();
-	void Fire();
+	void StartWeaponFire();
+	void StopWeaponFire();
 	void Reload();
 	void Holster();
 	UFUNCTION(Server, Reliable, WithValidation)

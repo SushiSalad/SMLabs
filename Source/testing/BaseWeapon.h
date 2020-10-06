@@ -6,52 +6,114 @@
 #include "GameFramework/Actor.h"
 #include "BaseWeapon.generated.h"
 
+namespace EWeaponState
+{
+	enum Type
+	{
+		Idle,
+		Firing,
+		Reloading,
+		Equipping,
+	};
+}
+
 UCLASS()
 class TESTING_API ABaseWeapon : public AActor
 {
 	GENERATED_BODY()
-	
-public:	
-	// Sets default values for this actor's properties
-	ABaseWeapon();
 
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	/** current weapon state */
+	EWeaponState::Type CurrentState;
+
+	/** is weapon fire active? */
+	bool bWantsToFire = false;
+
+	/** pawn owner */
+	UPROPERTY(Transient, ReplicatedUsing = OnRep_MyPawn)
+	class ASMPlayerCharacter* MyPawn;
+	UFUNCTION()
+	void OnRep_MyPawn();
+
 public:	
-	// Called every frame
+	// Sets default values for this actor's properties
+	ABaseWeapon();
 	virtual void Tick(float DeltaTime) override;
 
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite);
-	
-	UFUNCTION(BlueprintCallable) void Fire();
+	//Replicate variables on server
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const override;
 
-	//UPROPERTY(EditAnywhere, BlueprintReadWrite);
-	UFUNCTION(BlueprintCallable) void Reload();
+	/** set the weapon's owning pawn */
+	void SetOwningPawn(ASMPlayerCharacter* NewOwner);
 
-	UFUNCTION(BlueprintCallable) void toggleVis();
+	//////////////////////////////////////////////////////////////////////////
+	// Weapon usage
 
-	UFUNCTION(BlueprintImplementableEvent) void onFire();
+	/** [local + server] start weapon fire */
+	virtual void StartFire();
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerStartFire();
 
-	UFUNCTION(BlueprintImplementableEvent) void onReload();
+	/** [local + server] stop weapon fire */
+	virtual void StopFire();
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerStopFire();
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	/** [local + server] handle weapon fire */
+	void HandleFiring();
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerHandleFiring();
+
+	UFUNCTION(BlueprintCallable)
+	void Reload();
+
+	UFUNCTION(BlueprintCallable)
+	void toggleVis();
+
+	UFUNCTION(BlueprintImplementableEvent)
+	void onFire();
+
+	UFUNCTION(BlueprintImplementableEvent) 
+	void onReload();
+
+	/** [local] weapon specific fire implementation */
+	virtual void FireWeapon();
+
+	/** consume a number of bullets */
+	int32 UseAmmo(int32 ammoToUse);
+
+	//////////////////////////////////////////////////////////////////////////
+	// Weapon properties
+
+	UPROPERTY(Replicated, VisibleAnywhere, BlueprintReadWrite);
 	int ammo;
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
+	int ammoPerShot;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
 	int maxAmmo;
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
 	int bulletSpread;
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
 	int fireRate;
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
 	int damage;
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
 	int reloadSpeed;
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
+	int weaponID;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
+	int weaponRange;
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
 	int weight;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
-	USkeletalMeshComponent* skeleMesh;
+	UDamageType* damageType;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
+	USkeletalMeshComponent* skeleMesh;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Animation);
 	TArray<UAnimMontage*> montage;
+	UPROPERTY(VisibleAnywhere, BlueprintReadWrite, Category = Animation);
+	UAnimMontage* FireAnim;
 };

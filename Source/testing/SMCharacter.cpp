@@ -130,7 +130,7 @@ void ASMCharacter::PostInitializeComponents() {
 
 void ASMCharacter::Fire() {
 	if (weapon->ammo > 0) {
-		weapon->Fire();
+		//weapon->Fire();
 		this->PlayAnimMontage(weapon->montage[0]);
 	}
 }
