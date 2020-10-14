@@ -1,3 +1,5 @@
-# testing
+# SMLabs
 
-Developed with Unreal Engine 4
+Small FPS game.
+
+Being developed with Unreal Engine 4
