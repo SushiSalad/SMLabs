@@ -116,13 +116,9 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
 	int reloadSpeed;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
-	int weaponID;
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
 	int weaponRange;
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite);
 	int weight;
-	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
-	UDamageType* damageType;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
 	int maxRange;
 	UPROPERTY(VisibleAnywhere, BlueprintReadWrite);
