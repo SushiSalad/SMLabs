@@ -13,6 +13,7 @@
 #include "Character/PBPlayerMovement.h"
 
 //Unreal imports
+#include "EngineUtils.h"
 #include "Components/SceneComponent.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/PawnMovementComponent.h"
@@ -35,10 +36,6 @@ ASMPlayerCharacter::ASMPlayerCharacter(const FObjectInitializer& ObjectInitializ
 	//FPS Camera Component
 	FPSCameraComponent = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
 	FPSCameraComponent->bUsePawnControlRotation = true;
-
-	//Property defaults
-	Health = MAX_HEALTH;
-	Armor = MAX_ARMOR;
 }
 
 void ASMPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
@@ -46,19 +43,23 @@ void ASMPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME(ASMPlayerCharacter, Health);
 	DOREPLIFETIME(ASMPlayerCharacter, Armor);
 	DOREPLIFETIME(ASMPlayerCharacter, isHoldingWeapon);
-	//DOREPLIFETIME(ASMPlayerCharacter, equippedWeaponID);
+	DOREPLIFETIME(ASMPlayerCharacter, CurrentWeapon);
 }
 
 // Called when the game starts or when spawned
 void ASMPlayerCharacter::BeginPlay() {
 	Super::BeginPlay();
 
+	//set health values
+	Health = MAX_HEALTH;
+	Armor = MAX_ARMOR;
+
 	//spawn and set weapons
 	FActorSpawnParameters Sparam;
 	if (HandgunClass != NULL) {
 		handgun = GetWorld()->SpawnActor<ABaseWeapon>(HandgunClass, FTransform(FVector(0, 0, 0)), Sparam);
 		handgun->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, "hand_rSocket");
-		handgun->SetOwningPawn(this);
+		//handgun->SetOwningPawn(this);
 	} else {
 		DebugUtil::Error(FString::Printf(TEXT("There is no attached HandgunClass.")), 10);
 	}
@@ -67,20 +68,28 @@ void ASMPlayerCharacter::BeginPlay() {
 		rocket_launcher = GetWorld()->SpawnActor<ABaseWeapon>(RocketClass, FTransform(FVector(0, 0, 0)), Sparam);
 		rocket_launcher->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, "hand_rSocket");
 		rocket_launcher->toggleVis();
-		rocket_launcher->SetOwningPawn(this);
+		//rocket_launcher->SetOwningPawn(this);
 	} else {
 		DebugUtil::Error(FString::Printf(TEXT("There is no attached RocketClass.")), 10);
 	}
 
-	//starting weapon
-	weapon = handgun;
-
 	FPSCameraComponent->AttachToComponent(GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, "headSocket");
+	
+	//starting weapon
+	if (GetLocalRole() < ROLE_Authority) {
+		return;
+	}
+	SetCurrentWeapon(handgun);
 }
 
 void ASMPlayerCharacter::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
-	DebugUtil::Message(FString::Printf(TEXT("Health: %.1f, Armor: %.1f"), Health, Armor), DeltaTime);
+	if (GetLocalRole() < ROLE_Authority) {
+		DebugUtil::Message(FString::Printf(TEXT("Client - Health: %.1f, Armor: %.1f"), Health, Armor), DeltaTime);
+	} else {
+		DebugUtil::Message(FString::Printf(TEXT("Server - Health: %.1f, Armor: %.1f"), Health, Armor), DeltaTime);
+	}
+	
 }
 
 void ASMPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputComponent) {
@@ -147,6 +156,7 @@ float ASMPlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent con
 		actualDamage = DamageAmount;
 		Health -= DamageAmount;
 		if (Health <= 0) {
+			UE_LOG(LogTemp, Warning, TEXT("Player should have died"));
 			Die(actualDamage, DamageEvent, EventInstigator, DamageCauser);
 		} else {
 			//TODO PlayHit (see ShooterCharacter.cpp:421)
@@ -156,6 +166,7 @@ float ASMPlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent con
 	return actualDamage;
 }
 
+//TODO(delle) add gamemode kill functionality and scoring
 bool ASMPlayerCharacter::Die(float KillingDamage, struct FDamageEvent const& DamageEvent, class AController* Killer, class AActor* DamageCauser) {
 	//if (!CanDie(KillingDamage, DamageEvent, Killer, DamageCauser)) {
 	//	return false;
@@ -175,31 +186,28 @@ bool ASMPlayerCharacter::Die(float KillingDamage, struct FDamageEvent const& Dam
 	//GetCharacterMovement()->ForceReplicationUpdate();
 
 	//OnDeath(KillingDamage, DamageEvent, Killer ? Killer->GetPawn() : NULL, DamageCauser);
-	 
-	if (IsLocallyControlled()) {
-		FString deathMessage = FString::Printf(TEXT("You have been killed."));
-		DebugUtil::Message(deathMessage, 5);
-	}
-
 	if (GetLocalRole() == ROLE_Authority) {
-		FString healthMessage = FString::Printf(TEXT("%s now has %f health remaining."), *GetFName().ToString(), Health);
-		DebugUtil::Message(healthMessage, 3);
+		Respawn(); //TODO get team from playerstate/gamestate
 	}
 
-	Respawn(FName("Team1Spawn")); //TODO get team from playerstate/gamestate
-	
 	return true;
 }
 
-bool ASMPlayerCharacter::Respawn(FName playerStartTag) {
-	TArray<AActor*> FoundActors;
-	UGameplayStatics::GetAllActorsOfClassWithTag(GetWorld(), APlayerStart::StaticClass(), playerStartTag, FoundActors);
-
+//TODO(delle) check for preferred/optimal spawn points
+bool ASMPlayerCharacter::Respawn() {
+	UE_LOG(LogTemp, Warning, TEXT("Player should have respawned"));
+	TArray<APlayerStart*> FoundActors;
+	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It) {
+		APlayerStart* Spawn = *It;
+		FoundActors.Add(Spawn);
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Found %d places to respawn"), FoundActors.Num());
 	if (FoundActors.Num() > 0) {
 		FVector spawnLocation = FoundActors[FMath::FRandRange(0, FoundActors.Num())]->GetActorLocation();
 		FRotator spawnRotation = FoundActors[FMath::FRandRange(0, FoundActors.Num())]->GetActorRotation();
 		Health = MAX_HEALTH;
 		Armor = 0.f;
+		UE_LOG(LogTemp, Warning, TEXT("Player should be teleported"));
 		return TeleportTo(spawnLocation, spawnRotation);
 	}
 	return false;
@@ -210,9 +218,10 @@ bool ASMPlayerCharacter::Respawn(FName playerStartTag) {
 void ASMPlayerCharacter::StartWeaponFire() {
 	if (!bWantsToFire) {
 		bWantsToFire = true;
-		if (weapon) {
-			weapon->StartFire();
-			this->PlayAnimMontage(weapon->montage[0]);
+		if (CurrentWeapon) {
+			UE_LOG(LogTemp, Warning, TEXT("StartFire from %s as role %d"), *this->GetName(), this->GetLocalRole());
+			CurrentWeapon->StartFire();
+			this->PlayAnimMontage(CurrentWeapon->montage[0]);
 		}
 	}
 }
@@ -220,40 +229,28 @@ void ASMPlayerCharacter::StartWeaponFire() {
 void ASMPlayerCharacter::StopWeaponFire() {
 	if (bWantsToFire) {
 		bWantsToFire = false;
-		if (weapon) {
-			weapon->StopFire();
+		if (CurrentWeapon) {
+			CurrentWeapon->StopFire();
 		}
 	}
 }
 
-//void ASMPlayerCharacter::Fire() {
-//	if (weapon->ammo > 0) {
-//		weapon->Fire();
-//		DebugUtil::Message(FString::Printf(TEXT("Ammo: %d"), weapon->ammo), 2);
-//		//this->PlayAnimMontage(weapon->montage[0]);
-//		ShootWeapon();
-//	} else {
-//		//TODO makenoise 
-//		Reload();
-//	}
-//}
-
 void ASMPlayerCharacter::Reload() {
-	if (weapon->ammo < weapon->maxAmmo) {
-		weapon->Reload();
-		this->PlayAnimMontage(weapon->montage[1]);
+	if (CurrentWeapon->ammo < CurrentWeapon->maxAmmo) {
+		CurrentWeapon->Reload();
+		this->PlayAnimMontage(CurrentWeapon->montage[1]);
 	}
 }
 
 void ASMPlayerCharacter::SwitchWeapon() {
-	if (weapon == handgun) {
+	if (CurrentWeapon == handgun) {
 		rocket_launcher->toggleVis();
 		handgun->toggleVis();
-		weapon = rocket_launcher;
-	} else if (weapon == rocket_launcher) {
+		CurrentWeapon = rocket_launcher;
+	} else if (CurrentWeapon == rocket_launcher) {
 		rocket_launcher->toggleVis();
 		handgun->toggleVis();
-		weapon = handgun;
+		CurrentWeapon = handgun;
 	}
 }
 
@@ -277,7 +274,7 @@ void ASMPlayerCharacter::ShootWeapon_Implementation() {
 	FHitResult target;
 
 	if (GetWorld()->LineTraceSingleByChannel(target, cameraLoc, endLoc, ECC_Pawn, collisionParams)) {
-		UGameplayStatics::ApplyDamage(target.GetActor(), weapon->damage, GetController(), this, UDamageType::StaticClass());
+		UGameplayStatics::ApplyDamage(target.GetActor(), CurrentWeapon->damage, GetController(), this, UDamageType::StaticClass());
 	}
 }
 bool ASMPlayerCharacter::ShootWeapon_Validate() {
@@ -287,10 +284,57 @@ bool ASMPlayerCharacter::ShootWeapon_Validate() {
 void ASMPlayerCharacter::PlayWeaponFireAnimation_Implementation(int8 playerIndex) {
 	if (IsLocallyControlled()) {
 		if (GetController() != UGameplayStatics::GetPlayerController(GetWorld(), playerIndex)) {
-			this->PlayAnimMontage(weapon->montage[0]);
+			this->PlayAnimMontage(CurrentWeapon->montage[0]);
 		}
 	}
 }
 bool ASMPlayerCharacter::PlayWeaponFireAnimation_Validate(int8 playerIndex) {
+	return true;
+}
+
+//// Inventory Stuff ////
+
+void ASMPlayerCharacter::OnRep_CurrentWeapon(ABaseWeapon* LastWeapon){
+	SetCurrentWeapon(CurrentWeapon, LastWeapon);
+}
+
+void ASMPlayerCharacter::SetCurrentWeapon(ABaseWeapon* NewWeapon, ABaseWeapon* LastWeapon){
+	if (NewWeapon) {
+		ABaseWeapon* LocalLastWeapon = nullptr;
+		if (LastWeapon != NULL)
+		{
+			LocalLastWeapon = LastWeapon;
+		} else if (NewWeapon != CurrentWeapon)
+		{
+			LocalLastWeapon = CurrentWeapon;
+		}
+
+		// unequip previous
+		if (LocalLastWeapon)
+		{
+			//LocalLastWeapon->OnUnEquip();
+		}
+
+		CurrentWeapon = NewWeapon;
+
+		// equip new one
+		NewWeapon->SetOwningPawn(this);	// Make sure weapon's MyPawn is pointing back to us. During replication, we can't guarantee APawn::CurrentWeapon will rep after AWeapon::MyPawn!
+		//NewWeapon->OnEquip(LastWeapon);
+	}
+}
+
+void ASMPlayerCharacter::EquipWeapon(ABaseWeapon* Weapon){
+	if (Weapon){
+		if (GetLocalRole() == ROLE_Authority){
+			SetCurrentWeapon(Weapon, CurrentWeapon);
+		} else {
+			ServerEquipWeapon(Weapon);
+		}
+	}
+}
+void ASMPlayerCharacter::ServerEquipWeapon_Implementation(ABaseWeapon* Weapon){
+	EquipWeapon(Weapon);
+}
+bool ASMPlayerCharacter::ServerEquipWeapon_Validate(ABaseWeapon* Weapon){
 	return true;
 }

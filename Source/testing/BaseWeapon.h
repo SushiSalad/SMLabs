@@ -59,8 +59,18 @@ public:
 	//Replicate variables on server
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty> & OutLifetimeProps) const override;
 
+	//////////////////////////////////////////////////////////////////////////
+	// Pawn Ownership stuff
+
 	/** set the weapon's owning pawn */
 	void SetOwningPawn(ASMPlayerCharacter* NewOwner);
+
+	/** [server] weapon was added to pawn's inventory */
+	virtual void OnEnterInventory(ASMPlayerCharacter* NewOwner);
+
+	/** [server] weapon was removed from pawn's inventory */
+	virtual void OnLeaveInventory();
+
 
 	//////////////////////////////////////////////////////////////////////////
 	// Weapon usage
@@ -69,16 +79,34 @@ public:
 	virtual void StartFire();
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerStartFire();
+	void ServerStartFire_Implementation();
+	bool ServerStartFire_Validate();
 
 	/** [local + server] stop weapon fire */
 	virtual void StopFire();
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerStopFire();
+	void ServerStopFire_Implementation();
+	bool ServerStopFire_Validate();
 
 	/** [local + server] handle weapon fire */
 	void HandleFiring();
 	UFUNCTION(Server, Reliable, WithValidation)
 	void ServerHandleFiring();
+	void ServerHandleFiring_Implementation();
+	bool ServerHandleFiring_Validate();
+
+	/** [local] weapon specific fire implementation */
+	virtual void FireWeapon();
+
+	/** server notified of hit from client to verify */
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerNotifyHit(const FHitResult& fireTarget);
+	void ServerNotifyHit_Implementation(const FHitResult& fireTarget);
+	bool ServerNotifyHit_Validate(const FHitResult& fireTarget);
+
+	/** actually deals the damage to target */
+	void HitConfirmed(const FHitResult& fireTarget);
 
 	UFUNCTION(BlueprintCallable)
 	void Reload();
@@ -91,9 +119,6 @@ public:
 
 	UFUNCTION(BlueprintImplementableEvent) 
 	void onReload();
-
-	/** [local] weapon specific fire implementation */
-	virtual void FireWeapon();
 
 	/** consume a number of bullets */
 	int32 UseAmmo(int32 ammoToUse);

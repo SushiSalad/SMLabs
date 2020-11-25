@@ -25,6 +25,13 @@ ABaseWeapon::ABaseWeapon() {
 	maxRange = 0;
 	weaponID = 0;
 
+	CurrentState = EWeaponState::Idle;
+
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.TickGroup = TG_PrePhysics;
+	SetRemoteRoleForBackwardsCompat(ROLE_SimulatedProxy);
+	bReplicates = true;
+	bNetUseOwnerRelevancy = true;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -46,7 +53,6 @@ void ABaseWeapon::BeginPlay() {
 // Called every frame
 void ABaseWeapon::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
-
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -56,9 +62,9 @@ void ABaseWeapon::Tick(float DeltaTime) {
 void ABaseWeapon::OnRep_MyPawn() {
 	UE_LOG(LogTemp, Warning, TEXT("OnRep_MyPawn"));
 	if (MyPawn) {
-		//OnEnterInventory(MyPawn);
+		OnEnterInventory(MyPawn);
 	} else {
-		//OnLeaveInventory();
+		OnLeaveInventory();
 	}
 }
 
@@ -68,15 +74,34 @@ void ABaseWeapon::SetOwningPawn(ASMPlayerCharacter* NewOwner) {
 		MyPawn = NewOwner;
 		// net owner for RPC calls
 		SetOwner(NewOwner);
+		UE_LOG(LogTemp, Warning, TEXT("Setting owner of %s to %s on role %d"), *this->GetName(), *NewOwner->GetName(), this->GetLocalRole());
 	}
 }
 
+void ABaseWeapon::OnEnterInventory(ASMPlayerCharacter* NewOwner)
+{
+	SetOwningPawn(NewOwner);
+}
 
+void ABaseWeapon::OnLeaveInventory()
+{
+	/*
+	if (IsAttachedToPawn())
+	{
+		OnUnEquip();
+	}
+	*/
+	if (GetLocalRole() == ROLE_Authority)
+	{
+		SetOwningPawn(NULL);
+	}
+}
 
 //////////////////////////////////////////////////////////////////////////
 // Weapon usage
 
 void ABaseWeapon::StartFire() {
+	UE_LOG(LogTemp, Warning, TEXT("StartFire on %s as role %d"), *this->GetName(), this->GetLocalRole());
 	if (GetLocalRole() < ROLE_Authority) {
 		ServerStartFire();
 	}
@@ -143,8 +168,7 @@ bool ABaseWeapon::ServerHandleFiring_Validate() {
 
 void ABaseWeapon::FireWeapon() {
 	//UE_LOG(LogTemp, Warning, TEXT("FireWeapon"));
-	onFire();
-	//anim stuff here
+	onFire(); //anim stuff here
 	FCollisionQueryParams collisionParams;
 	collisionParams.bTraceComplex = true;
 	collisionParams.AddIgnoredActor(this);
@@ -158,11 +182,43 @@ void ABaseWeapon::FireWeapon() {
 	FHitResult fireTarget(ForceInit);
 	DrawDebugLine(GetWorld(), GetActorLocation(), end, FColor::Red, false, 2, 0, 2);
 	if (GetWorld()->LineTraceSingleByChannel(fireTarget, cameraLoc, end, ECC_Pawn, collisionParams)) {
-		//UE_LOG(LogTemp, Warning, TEXT("FireWeapon - HitResult"));
-		ASMPlayerCharacter* targetPlayer = Cast<ASMPlayerCharacter>(fireTarget.GetActor());
-		if(targetPlayer && targetPlayer->Health > 0){
-			//UE_LOG(LogTemp, Warning, TEXT("FireWeapon - HitResult - Health>0"));
-			UGameplayStatics::ApplyDamage(targetPlayer, damage, targetPlayer->GetController(), MyPawn, NULL); //TODO setup damage types
+		UE_LOG(LogTemp, Warning, TEXT("FireWeapon - HitResult"));
+		// if we're a client and we've hit something that is being controlled by the server
+		if (MyPawn && MyPawn->IsLocallyControlled() && GetNetMode() == NM_Client) {
+			UE_LOG(LogTemp, Warning, TEXT("FireWeapon - HitResult - OnClient"));
+			if (fireTarget.GetActor() && fireTarget.GetActor()->GetRemoteRole() == ROLE_Authority) {
+				UE_LOG(LogTemp, Warning, TEXT("FireWeapon - HitResult - OnClient - TargetOnServer"));
+				ServerNotifyHit(fireTarget);
+			}
+		}
+
+		UE_LOG(LogTemp, Warning, TEXT("HitConfirmed after server"));
+		HitConfirmed(fireTarget);
+	}
+}
+
+//TODO actually verify the hit and corresponding hit box
+void ABaseWeapon::ServerNotifyHit_Implementation(const FHitResult& fireTarget) {
+	UE_LOG(LogTemp, Warning, TEXT("HitConfirmed on server"));
+	HitConfirmed(fireTarget);
+}
+bool ABaseWeapon::ServerNotifyHit_Validate(const FHitResult& fireTarget) {
+	return true;
+}
+
+void ABaseWeapon::HitConfirmed(const FHitResult& fireTarget) {
+	UE_LOG(LogTemp, Warning, TEXT("HitConfirmed"));
+	// if we're an actor on the server, or the actor's role is authoritative, we should register damage
+	//ASMPlayerCharacter* targetPlayer = Cast<ASMPlayerCharacter>(fireTarget.GetActor()
+	if (fireTarget.GetActor() /*targetPlayer && targetPlayer->Health > 0*/) {
+		UE_LOG(LogTemp, Warning, TEXT("HitConfirmed - Health>0, NetMode: %d, targetLocalRole: %d"), GetNetMode(), fireTarget.GetActor()->GetLocalRole());
+		if (GetNetMode() != NM_Client || fireTarget.GetActor()->GetLocalRole() == ROLE_Authority) {
+			UE_LOG(LogTemp, Warning, TEXT("HitConfirmed - Health>0 - OnServer - TargetOnServer"));
+			//UGameplayStatics::ApplyDamage(targetPlayer, damage, targetPlayer->GetController(), MyPawn, NULL); //TODO setup damage types
+			FPointDamageEvent PointDmg;
+			PointDmg.HitInfo = fireTarget;
+			PointDmg.Damage = damage;
+			fireTarget.GetActor()->TakeDamage(damage, PointDmg, MyPawn->Controller, this);
 		}
 	}
 }
@@ -182,5 +238,3 @@ void ABaseWeapon::Reload() {
 void ABaseWeapon::toggleVis() {
 	skeleMesh->ToggleVisibility();
 }
-
-
