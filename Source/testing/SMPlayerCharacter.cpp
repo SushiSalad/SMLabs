@@ -7,7 +7,6 @@
 #include "SMGameState.h"
 #include "SMPlayerState.h"
 #include "SMGameMode.h"
-#include "SMCharacterMovementComponent.h"
 
 //Plugin imports
 #include "Character/PBPlayerMovement.h"
@@ -104,9 +103,6 @@ void ASMPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	//Setup jump bindings
 	PlayerInputComponent->BindAction(FName("Jump"), IE_Pressed, this, &ASMPlayerCharacter::Jump);
 	PlayerInputComponent->BindAction(FName("Jump"), IE_Released, this, &ASMPlayerCharacter::StopJumping);
-	//Setup swinging bindings
-//	PlayerInputComponent->BindAction(FName("FireRope"), IE_Pressed, this, &ASMPlayerCharacter::FireRope);
-//	PlayerInputComponent->BindAction(FName("FireRope"), IE_Released, this, &ASMPlayerCharacter::DetachRope);
 	//Setup weapon functionality
 	PlayerInputComponent->BindAction(FName("Fire"), IE_Pressed, this, &ASMPlayerCharacter::StartWeaponFire);
 	PlayerInputComponent->BindAction(FName("Fire"), IE_Released, this, &ASMPlayerCharacter::StopWeaponFire);
@@ -216,6 +212,7 @@ bool ASMPlayerCharacter::Respawn() {
 //// WEAPON STUFF ////
 
 void ASMPlayerCharacter::StartWeaponFire() {
+	UE_LOG(LogTemp, Warning, TEXT("fire"));
 	if (!bWantsToFire) {
 		bWantsToFire = true;
 		if (CurrentWeapon) {
