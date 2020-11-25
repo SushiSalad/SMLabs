@@ -111,8 +111,7 @@ void ARopeSMPlayerCharacter::RopeStuff(float DeltaTime) {
 			m->bIgnoreClientMovementErrorChecksAndCorrection = 1;
 			DrawDebugLine(GetWorld(), GetActorLocation(), ropeTarget.ImpactPoint, FColor::Red, false, -1.0F, 0, 2);
 			this->LaunchCharacter((ropeTarget.ImpactPoint - GetActorLocation()).GetSafeNormal() * RopePullSpeed, false, false);
-		}
-		else {
+		} else {
 			m->bServerAcceptClientAuthoritativePosition = 0;
 			m->bIgnoreClientMovementErrorChecksAndCorrection = 0;
 			DetachRope();
