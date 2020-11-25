@@ -39,6 +39,11 @@ ASMPlayerCharacter::ASMPlayerCharacter(const FObjectInitializer& ObjectInitializ
 	//Property defaults
 	Health = MAX_HEALTH;
 	Armor = MAX_ARMOR;
+
+	MaxRopeDistance = 50000;
+	RopePullSpeed = 10;
+	ropeFired = false;
+	coolDown = 3;
 }
 
 void ASMPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const {
@@ -46,6 +51,8 @@ void ASMPlayerCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& O
 	DOREPLIFETIME(ASMPlayerCharacter, Health);
 	DOREPLIFETIME(ASMPlayerCharacter, Armor);
 	DOREPLIFETIME(ASMPlayerCharacter, isHoldingWeapon);
+	DOREPLIFETIME_CONDITION(ASMPlayerCharacter, coolingDown, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(ASMPlayerCharacter, coolDownElapsed, COND_OwnerOnly);
 	//DOREPLIFETIME(ASMPlayerCharacter, equippedWeaponID);
 }
 
@@ -80,6 +87,9 @@ void ASMPlayerCharacter::BeginPlay() {
 
 void ASMPlayerCharacter::Tick(float DeltaTime) {
 	Super::Tick(DeltaTime);
+	RopeStuff(DeltaTime);
+	UpdateCoolDown(DeltaTime);
+	//if (coolingDown) { UE_LOG(LogTemp, Warning, TEXT("cooling down on %s"), *this->GetName()); }
 	DebugUtil::Message(FString::Printf(TEXT("Health: %.1f, Armor: %.1f"), Health, Armor), DeltaTime);
 }
 
@@ -96,8 +106,11 @@ void ASMPlayerCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputC
 	PlayerInputComponent->BindAction(FName("Jump"), IE_Pressed, this, &ASMPlayerCharacter::Jump);
 	PlayerInputComponent->BindAction(FName("Jump"), IE_Released, this, &ASMPlayerCharacter::StopJumping);
 	//Setup swinging bindings
-//	PlayerInputComponent->BindAction(FName("FireRope"), IE_Pressed, this, &ASMPlayerCharacter::FireRope);
-//	PlayerInputComponent->BindAction(FName("FireRope"), IE_Released, this, &ASMPlayerCharacter::DetachRope);
+	PlayerInputComponent->BindAction(FName("FireRope"), IE_Pressed, this, &ASMPlayerCharacter::FireRope);
+	PlayerInputComponent->BindAction(FName("FireRope"), IE_Released, this, &ASMPlayerCharacter::DetachRope);
+	//Sliding
+	PlayerInputComponent->BindAction(FName("StartSliding"), IE_Pressed, this, &ASMPlayerCharacter::StartSliding);
+	PlayerInputComponent->BindAction(FName("StartSliding"), IE_Released, this, &ASMPlayerCharacter::StopSliding);
 	//Setup weapon functionality
 	PlayerInputComponent->BindAction(FName("Fire"), IE_Pressed, this, &ASMPlayerCharacter::StartWeaponFire);
 	PlayerInputComponent->BindAction(FName("Fire"), IE_Released, this, &ASMPlayerCharacter::StopWeaponFire);
@@ -208,6 +221,7 @@ bool ASMPlayerCharacter::Respawn(FName playerStartTag) {
 //// WEAPON STUFF ////
 
 void ASMPlayerCharacter::StartWeaponFire() {
+	UE_LOG(LogTemp, Warning, TEXT("fire"));
 	if (!bWantsToFire) {
 		bWantsToFire = true;
 		if (weapon) {
@@ -294,3 +308,155 @@ void ASMPlayerCharacter::PlayWeaponFireAnimation_Implementation(int8 playerIndex
 bool ASMPlayerCharacter::PlayWeaponFireAnimation_Validate(int8 playerIndex) {
 	return true;
 }
+
+//// Rope Stuff ////
+
+void ASMPlayerCharacter::FireRope() {
+	if (GetLocalRole() < ROLE_Authority) {
+		UE_LOG(LogTemp, Warning, TEXT("FireRope_Local"));
+		ServerFireRope();
+	}
+
+	if (!ropeFired && !coolingDown) {
+		ropeFired = true;
+		FCollisionQueryParams collisionParams;
+		collisionParams.bTraceComplex = true;
+		collisionParams.AddIgnoredActor(this);
+
+		FVector cameraLoc;
+		FRotator cameraRot;
+		GetActorEyesViewPoint(cameraLoc, cameraRot);
+		FVector end = cameraLoc + (cameraRot.Vector() * MaxRopeDistance);
+
+		if (GetWorld()->LineTraceSingleByChannel(ropeTarget, cameraLoc, end, ECC_WorldStatic, collisionParams)) {
+			//DebugUtil::Message(FString::Printf(TEXT("Collision on %s at %s" ), *ropeTarget.GetActor()->GetActorLabel(), *ropeTarget.ImpactPoint.ToString()), 10);
+			ropeAttached = true;
+			coolingDown = true;
+			UE_LOG(LogTemp, Warning, TEXT("RopeAttached."));
+		}
+	}
+}
+
+void ASMPlayerCharacter::ServerFireRope_Implementation() {
+	UE_LOG(LogTemp, Warning, TEXT("FireRope_Server"));
+	FireRope();
+}
+
+bool ASMPlayerCharacter::ServerFireRope_Validate() {
+	//will need actual validation later
+	return true;
+}
+
+void ASMPlayerCharacter::RopeStuff(float DeltaTime) {
+	if (ropeAttached && coolDownElapsed < 0.5) {
+		UPBPlayerMovement* m = Cast<UPBPlayerMovement>(this->GetMovementComponent());
+		UE_LOG(LogTemp, Warning, TEXT("RopeStuff_Local"));
+		if (GetLocalRole() < ROLE_Authority) {
+			ServerRopeStuff(DeltaTime);
+			//DebugUtil::Message(FString::Printf(TEXT("COOLDOWN ON CLIENT: %f"), coolDownElapsed), DeltaTime);
+		}
+		if (coolDownElapsed < 0.5) {
+			m->bServerAcceptClientAuthoritativePosition = 1;
+			m->bIgnoreClientMovementErrorChecksAndCorrection = 1;
+			DrawDebugLine(GetWorld(), GetActorLocation(), ropeTarget.ImpactPoint, FColor::Red, false, -1.0F, 0, 2);
+			this->LaunchCharacter((ropeTarget.ImpactPoint - GetActorLocation()).GetSafeNormal() * RopePullSpeed, false, false);
+		}
+		else {
+			m->bServerAcceptClientAuthoritativePosition = 0;
+			m->bIgnoreClientMovementErrorChecksAndCorrection = 0;
+			DetachRope();
+		}
+	}
+}
+
+void ASMPlayerCharacter::ServerRopeStuff_Implementation(float DeltaTime) {
+	UE_LOG(LogTemp, Warning, TEXT("RopeStuff_Server"));
+	RopeStuff(DeltaTime);
+}
+
+bool ASMPlayerCharacter::ServerRopeStuff_Validate(float DeltaTime) {
+	return true;
+}
+
+void ASMPlayerCharacter::DetachRope() {
+	
+
+	if (GetLocalRole() < ROLE_Authority) {
+		UE_LOG(LogTemp, Warning, TEXT("~~~~~~~~~~~~DetachRope_Local~~~~~~~~~~~~~~~"));
+		ServerDetachRope();
+	}
+
+	ropeFired = false;
+	ropeAttached = false;
+	ropeTarget.Reset();
+}
+
+void ASMPlayerCharacter::ServerDetachRope_Implementation() {
+	UE_LOG(LogTemp, Warning, TEXT("DetachRope_Server"));
+	DetachRope();
+}
+bool ASMPlayerCharacter::ServerDetachRope_Validate() {
+	return true;
+}
+
+void ASMPlayerCharacter::StartSliding() {
+	if(GetLocalRole() < ROLE_Authority) {
+		ServerStartSliding();
+	}
+
+	UPBPlayerMovement* m = Cast<UPBPlayerMovement>(this->GetMovementComponent());
+	m->GroundFriction = 0;
+
+}
+
+void ASMPlayerCharacter::ServerStartSliding_Implementation() {
+	StartSliding();
+}
+
+bool ASMPlayerCharacter::ServerStartSliding_Validate() {
+	return true;
+}
+
+void ASMPlayerCharacter::StopSliding() {
+	if (GetLocalRole() < ROLE_Authority) {
+		ServerStopSliding();
+	}
+
+	UPBPlayerMovement* m = Cast<UPBPlayerMovement>(this->GetMovementComponent());
+	m->GroundFriction = 4;
+
+}
+
+void ASMPlayerCharacter::ServerStopSliding_Implementation() {
+	StopSliding();
+}
+
+bool ASMPlayerCharacter::ServerStopSliding_Validate() {
+	return true;
+}
+
+void ASMPlayerCharacter::UpdateCoolDown(float DeltaTime, bool cool) {
+	if (coolingDown) {
+		if (GetLocalRole() < ROLE_Authority) {
+			ServerUpdateCoolDown(DeltaTime);
+		}
+	}
+}
+
+void ASMPlayerCharacter::ServerUpdateCoolDown_Implementation(float DeltaTime, bool cool) {
+	if (coolingDown) {
+		DebugUtil::Message(FString::Printf(TEXT("Cooldown: %f on %s"), coolDownElapsed, *this->GetName()), DeltaTime);
+		coolDownElapsed += DeltaTime;
+		if (coolDownElapsed > coolDown) { 
+			coolingDown = false;
+			coolDownElapsed = 0;
+		}
+		//UpdateCoolDown(DeltaTime);
+	}
+	
+}
+
+bool ASMPlayerCharacter::ServerUpdateCoolDown_Validate(float DeltaTime, bool cool) {
+	return true;
+}
+
