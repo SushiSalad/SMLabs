@@ -9,6 +9,9 @@
 //#include "ConsoleLog.h"
 #include "DrawDebugHelpers.h"
 
+bool DEBUG_WEAPON = false;
+#define LOG if(DEBUG_WEAPON) UE_LOG
+
 // Sets default values
 ABaseWeapon::ABaseWeapon() {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -60,7 +63,7 @@ void ABaseWeapon::Tick(float DeltaTime) {
 
 // on update pawn, add/remove from pawns inventory
 void ABaseWeapon::OnRep_MyPawn() {
-	UE_LOG(LogTemp, Warning, TEXT("OnRep_MyPawn"));
+	LOG(LogTemp, Warning, TEXT("OnRep_MyPawn"));
 	if (MyPawn) {
 		OnEnterInventory(MyPawn);
 	} else {
@@ -74,7 +77,7 @@ void ABaseWeapon::SetOwningPawn(ASMPlayerCharacter* NewOwner) {
 		MyPawn = NewOwner;
 		// net owner for RPC calls
 		SetOwner(NewOwner);
-		UE_LOG(LogTemp, Warning, TEXT("Setting owner of %s to %s on role %d"), *this->GetName(), *NewOwner->GetName(), this->GetLocalRole());
+		LOG(LogTemp, Warning, TEXT("Setting owner of %s to %s on role %d"), *this->GetName(), *NewOwner->GetName(), this->GetLocalRole());
 	}
 }
 
@@ -101,7 +104,7 @@ void ABaseWeapon::OnLeaveInventory()
 // Weapon usage
 
 void ABaseWeapon::StartFire() {
-	UE_LOG(LogTemp, Warning, TEXT("StartFire on %s as role %d"), *this->GetName(), this->GetLocalRole());
+	LOG(LogTemp, Warning, TEXT("StartFire on %s as role %d"), *this->GetName(), this->GetLocalRole());
 	if (GetLocalRole() < ROLE_Authority) {
 		ServerStartFire();
 	}
@@ -114,7 +117,7 @@ void ABaseWeapon::StartFire() {
 	}
 }
 void ABaseWeapon::ServerStartFire_Implementation() {
-	UE_LOG(LogTemp, Warning, TEXT("ServerStartFire"));
+	LOG(LogTemp, Warning, TEXT("ServerStartFire"));
 	StartFire();
 }
 bool ABaseWeapon::ServerStartFire_Validate() {
@@ -122,13 +125,13 @@ bool ABaseWeapon::ServerStartFire_Validate() {
 }
 
 void ABaseWeapon::StopFire() {
-	//UE_LOG(LogTemp, Warning, TEXT("StopFire"));
+	LOG(LogTemp, Warning, TEXT("StopFire"));
 	if (GetLocalRole() < ROLE_Authority) {
 		ServerStopFire();
 	}
 
 	if (bWantsToFire) {
-		//UE_LOG(LogTemp, Warning, TEXT("StopFire - bWantsToFire"));
+		LOG(LogTemp, Warning, TEXT("StopFire - bWantsToFire"));
 		bWantsToFire = false;
 		//DetermineWeaponState(); //TODO setup weapon states
 		CurrentState = EWeaponState::Idle;
@@ -143,14 +146,14 @@ bool ABaseWeapon::ServerStopFire_Validate() {
 }
 
 void ABaseWeapon::HandleFiring() {
-	//UE_LOG(LogTemp, Warning, TEXT("HandleFiring"));
+	LOG(LogTemp, Warning, TEXT("HandleFiring"));
 	if (ammo > 0) {
 		//if (GetNetMode() != NM_DedicatedServer) {
 		//	SimulateWeaponFire();
 		//}
 
 		if (MyPawn && MyPawn->IsLocallyControlled()) {
-			//UE_LOG(LogTemp, Warning, TEXT("HandleFiring - MyPawn"));
+			LOG(LogTemp, Warning, TEXT("HandleFiring - MyPawn"));
 			FireWeapon();
 			UseAmmo(ammoPerShot);
 		}
@@ -159,7 +162,7 @@ void ABaseWeapon::HandleFiring() {
 	}
 }
 void ABaseWeapon::ServerHandleFiring_Implementation(){
-	UE_LOG(LogTemp, Warning, TEXT("ServerHandleFiring"));
+	LOG(LogTemp, Warning, TEXT("ServerHandleFiring"));
 	HandleFiring();
 }
 bool ABaseWeapon::ServerHandleFiring_Validate() {
@@ -167,7 +170,7 @@ bool ABaseWeapon::ServerHandleFiring_Validate() {
 }
 
 void ABaseWeapon::FireWeapon() {
-	//UE_LOG(LogTemp, Warning, TEXT("FireWeapon"));
+	LOG(LogTemp, Warning, TEXT("FireWeapon"));
 	onFire(); //anim stuff here
 	FCollisionQueryParams collisionParams;
 	collisionParams.bTraceComplex = true;
@@ -182,24 +185,24 @@ void ABaseWeapon::FireWeapon() {
 	FHitResult fireTarget(ForceInit);
 	DrawDebugLine(GetWorld(), GetActorLocation(), end, FColor::Red, false, 2, 0, 2);
 	if (GetWorld()->LineTraceSingleByChannel(fireTarget, cameraLoc, end, ECC_Pawn, collisionParams)) {
-		UE_LOG(LogTemp, Warning, TEXT("FireWeapon - HitResult"));
+		LOG(LogTemp, Warning, TEXT("FireWeapon - HitResult"));
 		// if we're a client and we've hit something that is being controlled by the server
 		if (MyPawn && MyPawn->IsLocallyControlled() && GetNetMode() == NM_Client) {
-			UE_LOG(LogTemp, Warning, TEXT("FireWeapon - HitResult - OnClient"));
+			LOG(LogTemp, Warning, TEXT("FireWeapon - HitResult - OnClient"));
 			if (fireTarget.GetActor() && fireTarget.GetActor()->GetRemoteRole() == ROLE_Authority) {
-				UE_LOG(LogTemp, Warning, TEXT("FireWeapon - HitResult - OnClient - TargetOnServer"));
+				LOG(LogTemp, Warning, TEXT("FireWeapon - HitResult - OnClient - TargetOnServer"));
 				ServerNotifyHit(fireTarget);
 			}
 		}
 
-		UE_LOG(LogTemp, Warning, TEXT("HitConfirmed after server"));
+		LOG(LogTemp, Warning, TEXT("HitConfirmed after server"));
 		HitConfirmed(fireTarget);
 	}
 }
 
 //TODO actually verify the hit and corresponding hit box
 void ABaseWeapon::ServerNotifyHit_Implementation(const FHitResult& fireTarget) {
-	UE_LOG(LogTemp, Warning, TEXT("HitConfirmed on server"));
+	LOG(LogTemp, Warning, TEXT("HitConfirmed on server"));
 	HitConfirmed(fireTarget);
 }
 bool ABaseWeapon::ServerNotifyHit_Validate(const FHitResult& fireTarget) {
@@ -207,13 +210,13 @@ bool ABaseWeapon::ServerNotifyHit_Validate(const FHitResult& fireTarget) {
 }
 
 void ABaseWeapon::HitConfirmed(const FHitResult& fireTarget) {
-	UE_LOG(LogTemp, Warning, TEXT("HitConfirmed"));
+	LOG(LogTemp, Warning, TEXT("HitConfirmed"));
 	// if we're an actor on the server, or the actor's role is authoritative, we should register damage
 	//ASMPlayerCharacter* targetPlayer = Cast<ASMPlayerCharacter>(fireTarget.GetActor()
 	if (fireTarget.GetActor() /*targetPlayer && targetPlayer->Health > 0*/) {
-		UE_LOG(LogTemp, Warning, TEXT("HitConfirmed - Health>0, NetMode: %d, targetLocalRole: %d"), GetNetMode(), fireTarget.GetActor()->GetLocalRole());
+		LOG(LogTemp, Warning, TEXT("HitConfirmed - Health>0, NetMode: %d, targetLocalRole: %d"), GetNetMode(), fireTarget.GetActor()->GetLocalRole());
 		if (GetNetMode() != NM_Client || fireTarget.GetActor()->GetLocalRole() == ROLE_Authority) {
-			UE_LOG(LogTemp, Warning, TEXT("HitConfirmed - Health>0 - OnServer - TargetOnServer"));
+			LOG(LogTemp, Warning, TEXT("HitConfirmed - Health>0 - OnServer - TargetOnServer"));
 			//UGameplayStatics::ApplyDamage(targetPlayer, damage, targetPlayer->GetController(), MyPawn, NULL); //TODO setup damage types
 			FPointDamageEvent PointDmg;
 			PointDmg.HitInfo = fireTarget;
@@ -224,12 +227,12 @@ void ABaseWeapon::HitConfirmed(const FHitResult& fireTarget) {
 }
 
 int32 ABaseWeapon::UseAmmo(int32 ammoToUse) {
-	//UE_LOG(LogTemp, Warning, TEXT("UseAmmo"));
+	LOG(LogTemp, Warning, TEXT("UseAmmo"));
 	return ammo -= ammoToUse;
 }
 
 void ABaseWeapon::Reload() {
-	UE_LOG(LogTemp, Warning, TEXT("Reload"));
+	LOG(LogTemp, Warning, TEXT("Reload"));
 	ammo = maxAmmo;
 	onReload();
 }

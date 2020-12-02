@@ -62,8 +62,9 @@ public:
 	virtual bool Die(float KillingDamage, struct FDamageEvent const& DamageEvent, class AController* Killer, class AActor* DamageCauser);
 	/** notification when killed, for both the server and client. */
 	//virtual void OnDeath(float KillingDamage, struct FDamageEvent const& DamageEvent, class APawn* InstigatingPawn, class AActor* DamageCauser);
-	//Respawns the player to a random PlayerStart
-	virtual bool Respawn();
+	
+	/** [server] respawns the player at a spawn point */
+	void ServerRespawn();
 
 ////Weapon Stuff////
 	void SwitchWeapon();
@@ -71,12 +72,6 @@ public:
 	void StopWeaponFire();
 	void Reload();
 	void Holster();
-
-	/** [server + local] fires the equiped weapon */
-	UFUNCTION(Server, Reliable, WithValidation)
-	void ShootWeapon();
-	void ShootWeapon_Implementation();
-	bool ShootWeapon_Validate();
 
 	/** [server + local] plays the equipped weapon's fire animation */
 	UFUNCTION(NetMulticast, Unreliable, WithValidation)

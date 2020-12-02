@@ -24,6 +24,9 @@
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerStart.h"
 
+bool DEBUG_CHARACTER = true;
+#define LOG if(DEBUG_CHARACTER) UE_LOG
+
 ASMPlayerCharacter::ASMPlayerCharacter(const FObjectInitializer& ObjectInitializer) :
 	Super(ObjectInitializer.SetDefaultSubobjectClass<UPBPlayerMovement>(ACharacter::CharacterMovementComponentName))
 {
@@ -131,28 +134,28 @@ void ASMPlayerCharacter::MoveRight(float value) {
 //Deals damage to this actor after possible armor damage reduction
 //Returns the actual damage dealt
 float ASMPlayerCharacter::TakeDamage(float DamageAmount, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) {
-	UE_LOG(LogTemp, Warning, TEXT("Take Damage | Damage: %f, Damaged:%s, Causer: %s"), DamageAmount, *this->GetName(), *DamageCauser->GetName());
+	LOG(LogTemp, Warning, TEXT("Take Damage | Damage: %f, Damaged:%s, Causer: %s"), DamageAmount, *this->GetName(), *DamageCauser->GetName());
 	float actualDamage;
 	if (Armor > 0) {
 		actualDamage = DamageAmount > 10 ? DamageAmount - 5 : FMath::RoundToDouble(DamageAmount / 2.f);
 		float newArmor = Armor - actualDamage;
 		if (newArmor <= 0) {
-			//UE_LOG(LogTemp, Warning, TEXT("Take Armor Damage"));
+			//LOG(LogTemp, Warning, TEXT("Take Armor Damage"));
 			Armor = 0;
 			Health += newArmor; //will be negative, so i add it
 			//TODO (maybe) MakeNoise: armor destroy
 			//TODO MakeNoise: health dmg
 		} else {
-			//UE_LOG(LogTemp, Warning, TEXT("Take Health Damage after armor"));
+			//LOG(LogTemp, Warning, TEXT("Take Health Damage after armor"));
 			Armor = newArmor;
 			//TODO MakeNoise: armor dmg
 		}
 	} else {
-		//UE_LOG(LogTemp, Warning, TEXT("Take Health Damage"));
+		//LOG(LogTemp, Warning, TEXT("Take Health Damage"));
 		actualDamage = DamageAmount;
 		Health -= DamageAmount;
 		if (Health <= 0) {
-			UE_LOG(LogTemp, Warning, TEXT("Player should have died"));
+			LOG(LogTemp, Warning, TEXT("Player should have died"));
 			Die(actualDamage, DamageEvent, EventInstigator, DamageCauser);
 		} else {
 			//TODO PlayHit (see ShooterCharacter.cpp:421)
@@ -183,40 +186,39 @@ bool ASMPlayerCharacter::Die(float KillingDamage, struct FDamageEvent const& Dam
 
 	//OnDeath(KillingDamage, DamageEvent, Killer ? Killer->GetPawn() : NULL, DamageCauser);
 	if (GetLocalRole() == ROLE_Authority) {
-		Respawn(); //TODO get team from playerstate/gamestate
+		ServerRespawn(); //TODO get team from playerstate/gamestate
 	}
 
 	return true;
 }
 
 //TODO(delle) check for preferred/optimal spawn points
-bool ASMPlayerCharacter::Respawn() {
-	UE_LOG(LogTemp, Warning, TEXT("Player should have respawned"));
+void ASMPlayerCharacter::ServerRespawn() {
+	LOG(LogTemp, Warning, TEXT("Player should have respawned"));
 	TArray<APlayerStart*> FoundActors;
 	for (TActorIterator<APlayerStart> It(GetWorld()); It; ++It) {
 		APlayerStart* Spawn = *It;
 		FoundActors.Add(Spawn);
 	}
-	UE_LOG(LogTemp, Warning, TEXT("Found %d places to respawn"), FoundActors.Num());
+	LOG(LogTemp, Warning, TEXT("Found %d places to respawn"), FoundActors.Num());
 	if (FoundActors.Num() > 0) {
-		FVector spawnLocation = FoundActors[FMath::FRandRange(0, FoundActors.Num())]->GetActorLocation();
-		FRotator spawnRotation = FoundActors[FMath::FRandRange(0, FoundActors.Num())]->GetActorRotation();
+		APlayerStart* respawnActor = FoundActors[FMath::FRandRange(0, FoundActors.Num())];
 		Health = MAX_HEALTH;
 		Armor = 0.f;
-		UE_LOG(LogTemp, Warning, TEXT("Player should be teleported"));
-		return TeleportTo(spawnLocation, spawnRotation);
+		LOG(LogTemp, Warning, TEXT("Player should be teleported to %s, Auth: %d"), *respawnActor->GetName(), GetLocalRole());
+		bool test = TeleportTo(respawnActor->GetActorLocation(), respawnActor->GetActorRotation());
+		if (test) { LOG(LogTemp, Warning, TEXT("aye yuh")); }
 	}
-	return false;
 }
 
 //// WEAPON STUFF ////
 
 void ASMPlayerCharacter::StartWeaponFire() {
-	UE_LOG(LogTemp, Warning, TEXT("fire"));
+	//LOG(LogTemp, Warning, TEXT("fire"));
 	if (!bWantsToFire) {
 		bWantsToFire = true;
 		if (CurrentWeapon) {
-			UE_LOG(LogTemp, Warning, TEXT("StartFire from %s as role %d"), *this->GetName(), this->GetLocalRole());
+			//LOG(LogTemp, Warning, TEXT("StartFire from %s as role %d"), *this->GetName(), this->GetLocalRole());
 			CurrentWeapon->StartFire();
 			this->PlayAnimMontage(CurrentWeapon->montage[0]);
 		}
@@ -259,25 +261,6 @@ void ASMPlayerCharacter::Holster() {
 	}
 }
 
-void ASMPlayerCharacter::ShootWeapon_Implementation() {
-	PlayWeaponFireAnimation(0); //TODO get playerIndex from player state
-	FCollisionQueryParams collisionParams;
-	collisionParams.bTraceComplex = false;
-	collisionParams.AddIgnoredActor(this);
-	FVector cameraLoc;
-	FRotator cameraRot;
-	GetActorEyesViewPoint(cameraLoc, cameraRot);
-	FVector endLoc = cameraLoc + (cameraRot.Vector() * 5000); //TODO get max weapon range from weapon
-	FHitResult target;
-
-	if (GetWorld()->LineTraceSingleByChannel(target, cameraLoc, endLoc, ECC_Pawn, collisionParams)) {
-		UGameplayStatics::ApplyDamage(target.GetActor(), CurrentWeapon->damage, GetController(), this, UDamageType::StaticClass());
-	}
-}
-bool ASMPlayerCharacter::ShootWeapon_Validate() {
-	return true;
-}
-
 void ASMPlayerCharacter::PlayWeaponFireAnimation_Implementation(int8 playerIndex) {
 	if (IsLocallyControlled()) {
 		if (GetController() != UGameplayStatics::GetPlayerController(GetWorld(), playerIndex)) {
@@ -285,9 +268,7 @@ void ASMPlayerCharacter::PlayWeaponFireAnimation_Implementation(int8 playerIndex
 		}
 	}
 }
-bool ASMPlayerCharacter::PlayWeaponFireAnimation_Validate(int8 playerIndex) {
-	return true;
-}
+bool ASMPlayerCharacter::PlayWeaponFireAnimation_Validate(int8 playerIndex) { return true; }
 
 //// Inventory Stuff ////
 
@@ -329,9 +310,5 @@ void ASMPlayerCharacter::EquipWeapon(ABaseWeapon* Weapon){
 		}
 	}
 }
-void ASMPlayerCharacter::ServerEquipWeapon_Implementation(ABaseWeapon* Weapon){
-	EquipWeapon(Weapon);
-}
-bool ASMPlayerCharacter::ServerEquipWeapon_Validate(ABaseWeapon* Weapon){
-	return true;
-}
+void ASMPlayerCharacter::ServerEquipWeapon_Implementation(ABaseWeapon* Weapon){ EquipWeapon(Weapon); }
+bool ASMPlayerCharacter::ServerEquipWeapon_Validate(ABaseWeapon* Weapon){ return true; }

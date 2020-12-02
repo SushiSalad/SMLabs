@@ -1,15 +1,15 @@
 // Fill out your copyright notice in the Description page of Project Settings.
 
 #include "SMGameMode.h"
-
-#include "GameFramework/HUD.h"
+#include "SMHUD.h"
+#include "SMPlayerController.h"
 
 ASMGameMode::ASMGameMode(const FObjectInitializer& ObjectInitializer) : Super(ObjectInitializer) {
 	static ConstructorHelpers::FClassFinder<APawn> PlayerPawnOb(TEXT("/Game/Blueprints/Characters/BP_SMCharacter"));
 	DefaultPawnClass = PlayerPawnOb.Class;
 
-	HUDClass = AHUD::StaticClass();
-	PlayerControllerClass = APlayerController::StaticClass();
+	HUDClass = ASMHUD::StaticClass();
+	PlayerControllerClass = ASMPlayerController::StaticClass();
 }
 
 //bool ASMGameMode::ReadyToStartMatch_Implementation() {
