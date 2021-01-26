@@ -1,5 +1,28 @@
-# SMLabs
+[P3DPGE](https://github.com/SushiSalad/P3DPGE)
+===
+An air-strafing and rope-grappling arena shooter designed in Unreal Engine 4
 
-Small FPS game.
+### Features
+* Air-strafing movement 
+* Rope grappling
+* Weapon firing replication
+* Health and damage replication
 
-Being developed with Unreal Engine 4
+### [Major TODOs](https://github.com/SushiSalad/SMLabs/projects/1)
+* Finish indoors map
+* Finish character and weapon models
+* Animation replication
+* Death and respawning
+* Gamemode
+* Pickups
+* Different weapons
+
+### Credits
+* [dellevelled](https://github.com/DelleVelleD) Co-developer
+* [SushiSalad](https://github.com/SushiSalad) Co-developer
+* [Unreal Engine](https://www.unrealengine.com/en-US/)
+* [PB Movement Plugin](https://github.com/ProjectBorealis/PBCharacterMovement)
+<!--
+### [License](LICENSE.txt)
+Public Domain or MIT licensed -- whichever you prefer
+-->
