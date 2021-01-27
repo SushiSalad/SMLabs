@@ -1,4 +1,4 @@
-[P3DPGE](https://github.com/SushiSalad/P3DPGE)
+[SMLabs](https://github.com/SushiSalad/SMLabs)
 ===
 An air-strafing and rope-grappling arena shooter designed in Unreal Engine 4
 
